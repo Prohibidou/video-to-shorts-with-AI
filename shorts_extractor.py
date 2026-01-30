@@ -151,6 +151,20 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
     
     print(f"   ✅ Transcripción completada ({len(result)} fragmentos)")
 
+    # Reemplazar "protestante" por "protestante(evangelico)" en los subtítulos
+    # y eliminar acentos
+    import unicodedata
+    def remove_accents(text):
+        return ''.join(
+            c for c in unicodedata.normalize('NFD', text)
+            if unicodedata.category(c) != 'Mn'
+        )
+    
+    for segment in result:
+        segment["text"] = segment["text"].replace("protestante", "protestante(evangelico)")
+        segment["text"] = segment["text"].replace("Protestante", "Protestante(Evangelico)")
+        segment["text"] = remove_accents(segment["text"])
+
     return result
 
 
