@@ -99,7 +99,7 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
     
     print(f"   🎤 Transcribiendo audio...")
     
-    # Usar modelo pequeño para velocidad
+    # Usar modelo small para mejor calidad de transcripción
     model = WhisperModel("small", device="cpu", compute_type="int8")
     
     segments, info = model.transcribe(
@@ -151,9 +151,11 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
     
     print(f"   ✅ Transcripción completada ({len(result)} fragmentos)")
 
-    # Reemplazar "protestante" por "protestante(evangelico)" en los subtítulos
+    # Reemplazar "protestante/protestantes" por "protestantes (Evangelicos)" en los subtítulos
     # y eliminar acentos
     import unicodedata
+    import re
+    
     def remove_accents(text):
         return ''.join(
             c for c in unicodedata.normalize('NFD', text)
@@ -161,9 +163,12 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
         )
     
     for segment in result:
-        segment["text"] = segment["text"].replace("protestante", "protestante(evangelico)")
-        segment["text"] = segment["text"].replace("Protestante", "Protestante(Evangelico)")
-        segment["text"] = remove_accents(segment["text"])
+        # Si el texto contiene "protestante" o "protestantes", reemplazar TODO el texto
+        # con solo "protestantes (Evangelicos)" - sin ninguna otra palabra
+        if re.search(r'\bprotestantes?\b', segment["text"], flags=re.IGNORECASE):
+            segment["text"] = "protestantes (Evangelicos)"
+        else:
+            segment["text"] = remove_accents(segment["text"])
 
     return result
 

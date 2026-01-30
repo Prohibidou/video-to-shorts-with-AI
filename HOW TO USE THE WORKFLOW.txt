@@ -1,0 +1,2 @@
+prompt al agente : "Ejecuta el workflow de shorts apologéticos con este video: [URL]"
+

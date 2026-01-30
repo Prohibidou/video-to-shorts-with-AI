@@ -1,48 +1,45 @@
 {
     "video_url": "https://www.youtube.com/watch?v=JxAdV9YVbsY",
-    "video_title": "San Ignacio de Antioquía - Carta a los efesios",
     "segments": [
         {
-            "start": "11:29",
-            "end": "11:43",
-            "name": "Identidad Catolica de los Apostoles",
-            "description": "Afirma que los personajes bíblicos y discípulos eran católicos"
+            "start": "10:37",
+            "end": "11:20",
+            "name": "Iglesia_Catolica_Primitiva"
         },
         {
-            "start": "12:59",
-            "end": "13:33",
-            "name": "Refutacion Sola Fide y Scriptura",
-            "description": "Lutero no recuperó la doctrina apostólica"
+            "start": "12:58",
+            "end": "13:45",
+            "name": "Doctrinas_Apostolicas_Son_Catolicas"
         },
         {
-            "start": "27:53",
-            "end": "28:40",
-            "name": "El peligro de la falsa doctrina",
-            "description": "Advertencia sobre herejía y falsa doctrina"
+            "start": "21:43",
+            "end": "22:25",
+            "name": "Ignacio_Contra_Herejes"
         },
         {
-            "start": "37:39",
-            "end": "38:27",
-            "name": "Jerarquia y Titulos Biblicos",
-            "description": "Ejemplos bíblicos de lenguaje de honor"
+            "start": "24:26",
+            "end": "25:05",
+            "name": "No_Herejia_Entre_Ustedes"
         },
         {
-            "start": "42:48",
-            "end": "43:18",
-            "name": "Salvacion por Caridad y Obras",
-            "description": "Fe es el principio, caridad es necesaria"
+            "start": "27:37",
+            "end": "28:20",
+            "name": "Herejia_Merece_Infierno"
         },
         {
-            "start": "55:30",
-            "end": "56:18",
-            "name": "Eucaristia y el Altar",
-            "description": "Importancia de la Eucaristía y comunión con el obispo"
+            "start": "31:53",
+            "end": "32:35",
+            "name": "Herejes_No_Heredan_Reino"
         },
         {
-            "start": "59:06",
-            "end": "59:52",
-            "name": "La Unidad de la Iglesia",
-            "description": "Metáfora de la túnica de Cristo"
+            "start": "43:07",
+            "end": "43:50",
+            "name": "Fe_Y_Caridad_Para_Salvarse"
+        },
+        {
+            "start": "55:22",
+            "end": "56:05",
+            "name": "Fuera_Altar_Sin_Pan_De_Dios"
         }
     ]
 }
