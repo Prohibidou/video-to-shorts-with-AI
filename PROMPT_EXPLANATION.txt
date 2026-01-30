@@ -1,0 +1,31 @@
+USER PROMPT:
+"necesito que en este video, analices su script, y me des desde qué minuto a qué minuto, hay material para hacer shorts para youtube que convierta a evangelicos/protestantes en catolicos, con shorts que sean muy impactantes, llamativos e incómodos para un evangelico/protestante y que llamen la atención en los primeros 2 segundos de video a evangelicos que lo miren"
+
+---
+
+CÓMO ESTE PROMPT AYUDA A RAZONAR Y OBTENER BUENOS SHORTS (ANÁLISIS DE LA IA):
+
+Este prompt es extremadamente efectivo porque no pide un resumen genérico del video, sino que establece un "filtro de intención agresiva" (en el sentido retórico/teológico). Esto permite a la IA descartar el 95% del contenido informativo y centrarse únicamente en la "fricción".
+
+Proceso de Razonamiento desencadenado por el prompt:
+
+1.  **Definición del Target (La Víctima Intelectual):**
+    *   Target: Evangélico/Protestante convencido.
+    *   Psicología: Cree que la Iglesia Católica es apóstata, idólatra y corrompida.
+    *   Estrategia derivada: No usar argumentos defensivos ("no adoramos imágenes"), sino contraataques que cuestionen SU propia base ("tu pastor no tiene autoridad").
+
+2.  **El Criterio de "Incomodidad" (Disonancia Cognitiva):**
+    *   El prompt pide que sea "incómodo". Esto descarta enseñanzas suaves sobre el amor o la paz.
+    *   La IA busca palabras clave de conflicto: *Herejía, Condenación, Infierno, Lutero, División, Altar*.
+    *   Si un segmento dice "Ignacio amaba a Dios", se descarta. Si dice "Si no estás con Ignacio, tu pan no es de Dios", se selecciona.
+
+3.  **El Gancho de los 2 Segundos (The Hook):**
+    *   El prompt exige atención inmediata. Esto obliga a buscar frases que empiecen con una afirmación radical.
+    *   Ejemplo seleccionado: "Que a los protestantes no les mientan...". Esto detiene el scroll inmediatamente porque el espectador piensa: "¿En qué me mintieron?".
+
+4.  **Inyección de Lógica Teológica Histórica:**
+    *   Al analizar el script (obtenido vía web scraping o subs), la IA cruza el texto con conocimientos de apologética.
+    *   Detecta que San Ignacio de Antioquía (discípulo de Juan) hablando de "Eucaristía" en el año 107 d.C. es una "prueba nuclear" contra la teología simbólica protestante.
+
+Resultado:
+Gracias a este prompt específico, la IA funciona no como un "resumidor", sino como un "editor de video apologético", seleccionando clips quirúrgicamente diseñados para generar debate, comentarios y retención, que es lo que viraliza un Short.

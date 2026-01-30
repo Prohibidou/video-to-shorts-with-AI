@@ -1,0 +1,48 @@
+{
+    "video_url": "https://www.youtube.com/watch?v=JxAdV9YVbsY",
+    "video_title": "San Ignacio de Antioquía - Carta a los efesios",
+    "segments": [
+        {
+            "start": "11:29",
+            "end": "11:43",
+            "name": "Identidad Catolica de los Apostoles",
+            "description": "Afirma que los personajes bíblicos y discípulos eran católicos"
+        },
+        {
+            "start": "12:59",
+            "end": "13:33",
+            "name": "Refutacion Sola Fide y Scriptura",
+            "description": "Lutero no recuperó la doctrina apostólica"
+        },
+        {
+            "start": "27:53",
+            "end": "28:40",
+            "name": "El peligro de la falsa doctrina",
+            "description": "Advertencia sobre herejía y falsa doctrina"
+        },
+        {
+            "start": "37:39",
+            "end": "38:27",
+            "name": "Jerarquia y Titulos Biblicos",
+            "description": "Ejemplos bíblicos de lenguaje de honor"
+        },
+        {
+            "start": "42:48",
+            "end": "43:18",
+            "name": "Salvacion por Caridad y Obras",
+            "description": "Fe es el principio, caridad es necesaria"
+        },
+        {
+            "start": "55:30",
+            "end": "56:18",
+            "name": "Eucaristia y el Altar",
+            "description": "Importancia de la Eucaristía y comunión con el obispo"
+        },
+        {
+            "start": "59:06",
+            "end": "59:52",
+            "name": "La Unidad de la Iglesia",
+            "description": "Metáfora de la túnica de Cristo"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+output/
+output_test/
+temp_analysis_output/
+__pycache__/
+*.mp4
+*.webm
+*.vtt
