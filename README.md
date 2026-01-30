@@ -129,6 +129,55 @@ output/
 | `bold` | Impact grande con borde grueso. Estilo "influencer". |
 | `minimal` | Helvetica delgada con sombra sutil. Elegante y discreto. |
 
+## 🧠 Análisis con IA para encontrar Timestamps
+
+Si no sabes qué partes del video cortar, puedes usar la IA para analizar el script y encontrar los momentos más impactantes.
+
+### Paso 1: Descargar los subtítulos del video
+
+```bash
+python get_subs.py
+```
+
+Esto descarga los subtítulos automáticos de YouTube en formato VTT a la carpeta `temp_analysis_output/`.
+
+### Paso 2: Analizar el script con palabras clave
+
+Edita `analyze_vtt.py` y modifica la lista de `keywords` según lo que busques. Por ejemplo, para apologética católica:
+
+```python
+keywords = [
+    "eucaristía", "altar", "obispo", "herejía", 
+    "protestante", "Lutero", "biblia", "autoridad"
+]
+```
+
+Luego ejecuta:
+
+```bash
+python analyze_vtt.py
+```
+
+Esto genera `analysis_results.txt` con los fragmentos donde aparecen esas palabras y sus timestamps.
+
+### Paso 3: Usar una IA para razonar
+
+Pasa el contenido de `analysis_results.txt` a una IA (como Gemini o Claude) junto con un prompt como este:
+
+> "Analiza estos fragmentos y dime cuáles serían los más impactantes para crear Shorts de YouTube que llamen la atención en los primeros 2 segundos. Dame los timestamps de inicio y fin."
+
+La IA filtrará el contenido informativo y te dará los momentos de mayor "fricción" o impacto emocional.
+
+### Paso 4: Crear el JSON y extraer
+
+Con los timestamps que te dio la IA, crea tu archivo JSON y ejecuta:
+
+```bash
+python batch_extractor.py mi_analisis.json --vertical --style bold
+```
+
+> 📄 Ver `PROMPT_EXPLANATION.txt` para un ejemplo detallado de cómo razona la IA al seleccionar clips.
+
 ## 💡 Tips
 
 1. **Primeras pruebas**: Usa `--fast` para verificar que los timestamps son correctos antes de generar subtítulos.
