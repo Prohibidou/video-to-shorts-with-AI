@@ -21,7 +21,14 @@ import tempfile
 import re
 from pathlib import Path
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Tuple
+
+# Database module for tracking
+try:
+    from database import save_video, save_short, init_db
+    DB_AVAILABLE = True
+except ImportError:
+    DB_AVAILABLE = False
 
 
 @dataclass
@@ -52,6 +59,20 @@ def seconds_to_srt_time(seconds: float) -> str:
     secs = int(seconds % 60)
     millis = int((seconds - int(seconds)) * 1000)
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
+
+
+def get_video_title(url: str) -> str:
+    """Obtiene el título real del video de YouTube usando yt-dlp."""
+    try:
+        result = subprocess.run(
+            ["yt-dlp", "--get-title", url],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except Exception as e:
+        print(f"   ⚠️ No se pudo obtener título: {e}")
+    return None
 
 
 def download_video(url: str, output_dir: Path) -> Path:
@@ -278,8 +299,10 @@ def extract_clip_with_subtitles(
     add_subtitles: bool = True,
     subtitle_style: str = "modern",
     language: str = "es"
-) -> Path:
-    """Extrae un clip del video fuente con subtítulos automáticos."""
+) -> Tuple[Optional[Path], str]:
+    """Extrae un clip del video fuente con subtítulos automáticos.
+    Retorna (path_archivo, script_texto).
+    """
     
     start_seconds = time_to_seconds(segment.start)
     end_seconds = time_to_seconds(segment.end)
@@ -317,7 +340,7 @@ def extract_clip_with_subtitles(
         # Si no queremos subtítulos, renombrar y retornar
         temp_clip.rename(output_file)
         print(f"   ✅ Guardado: {output_file.name}")
-        return output_file
+        return output_file, ""
     
     # Paso 2: Transcribir el clip (máximo 2 palabras por fragmento = 1 sola línea)
     transcription = transcribe_audio(temp_clip, language, max_words_per_line=2)
@@ -325,7 +348,7 @@ def extract_clip_with_subtitles(
     if not transcription:
         print(f"   ⚠️  No se detectó audio/voz. Guardando sin subtítulos.")
         temp_clip.rename(output_file)
-        return output_file
+        return output_file, ""
     
     # Paso 3: Crear archivo de subtítulos SRT temporal para FFmpeg
     subs_file = output_dir / f"subs_{clip_index:02d}.srt"
@@ -401,10 +424,13 @@ def extract_clip_with_subtitles(
     # Verificar si el archivo de salida se creó correctamente
     if not output_file.exists():
         print(f"   ❌ Error: No se pudo crear el video con subtítulos")
-        return None
+        return None, ""
+    
+    # Extraer texto completo del script
+    script_text = " ".join([seg["text"] for seg in transcription])
     
     print(f"   ✅ Guardado: {output_file.name} (con subtítulos)")
-    return output_file
+    return output_file, script_text
 
 
 def extract_clip_fast(
@@ -477,17 +503,34 @@ def process_video(
     # Descargar video
     source_video = download_video(url, output_dir)
     
+    # Obtener título real del video de YouTube
+    video_title = get_video_title(url)
+    if video_title:
+        print(f"   📺 Título: {video_title}")
+    
+    # Guardar video en base de datos
+    video_id = None
+    if DB_AVAILABLE:
+        try:
+            video_id = save_video(url=url, title=video_title, transcript=None)
+            print(f"   💾 Video registrado en BD (ID: {video_id})")
+        except Exception as e:
+            print(f"   ⚠️ Error guardando video en BD: {e}")
+    
     # Extraer cada segmento
     print(f"\n📋 Procesando {len(segments)} segmentos...")
     if add_subtitles:
         print(f"   📝 Subtítulos automáticos: ACTIVADOS (estilo: {subtitle_style})")
     
     extracted_clips = []
+    all_scripts = []  # Para guardar transcripción completa del video
+    
     for i, segment in enumerate(segments, 1):
         if fast_mode:
             clip = extract_clip_fast(source_video, segment, clips_dir, i)
+            script_text = ""
         else:
-            clip = extract_clip_with_subtitles(
+            clip, script_text = extract_clip_with_subtitles(
                 source_video, segment, clips_dir, i,
                 make_vertical=make_vertical,
                 add_subtitles=add_subtitles,
@@ -497,6 +540,31 @@ def process_video(
         
         if clip:
             extracted_clips.append(clip)
+            all_scripts.append(script_text)
+            
+            # Guardar short en base de datos
+            if DB_AVAILABLE and video_id:
+                try:
+                    short_id = save_short(
+                        video_id=video_id,
+                        title=segment.name,
+                        summary=f"Short extraído de {segment.start} a {segment.end}",
+                        script=script_text,
+                        start_time=segment.start,
+                        end_time=segment.end,
+                        output_filename=clip.name
+                    )
+                    print(f"   💾 Short guardado en BD (ID: {short_id})")
+                except Exception as e:
+                    print(f"   ⚠️ Error guardando short en BD: {e}")
+    
+    # Actualizar transcripción completa del video en BD
+    if DB_AVAILABLE and video_id and all_scripts:
+        try:
+            full_transcript = "\n\n".join(all_scripts)
+            save_video(url=url, title=None, transcript=full_transcript)
+        except Exception as e:
+            print(f"   ⚠️ Error actualizando transcript en BD: {e}")
     
     # Limpiar video fuente si no se quiere conservar
     if not keep_source:
@@ -511,6 +579,8 @@ def process_video(
     print(f"   📊 Clips extraídos: {len(extracted_clips)}/{len(segments)}")
     if add_subtitles:
         print(f"   📝 Archivos SRT también guardados para cada clip")
+    if DB_AVAILABLE:
+        print(f"   💾 Datos guardados en base de datos")
     
     return extracted_clips
 
