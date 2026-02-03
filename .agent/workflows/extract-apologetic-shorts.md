@@ -146,10 +146,16 @@ Esto ejecutará automáticamente:
 python generate_extended.py
 ```
 
-4. **Gestionar en UI**:
+4. **Generar Long** (opcional, videos de 10 min):
+```bash
+python generate_long.py
+```
+
+5. **Gestionar en UI**:
 ```bash
 python shorts_ui.py
 # Abrir http://localhost:5000 para aprobar/rechazar
+# Preview de videos directamente en el navegador
 ```
 
 ---

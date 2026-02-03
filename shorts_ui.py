@@ -422,24 +422,36 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const body = document.getElementById('modal-body');
             
             if (videos.length === 0) {
-                body.innerHTML = '<div class="no-videos">No hay videos de este tipo</div>';
+                body.innerHTML = '<div class="no-videos">No hay videos de este tipo. Ejecuta:<br><code style="background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 4px; margin-top: 10px; display: inline-block;">' + (type === 'extended' ? 'python generate_extended.py' : 'python generate_long.py') + '</code></div>';
             } else {
                 body.innerHTML = videos.map(v => {
                     const status = v.status || 'pending';
+                    const videoPath = v.output_filename || '';
+                    const encodedPath = encodeURIComponent(videoPath);
+                    const folderPath = videoPath ? videoPath.substring(0, videoPath.lastIndexOf('\\\\') || videoPath.lastIndexOf('/')) : '';
+                    
                     return `
                     <div class="video-item ${type}" id="video-${type}-${v.id}">
                         <h4>${v.title || 'Sin título'}</h4>
-                        <p><strong>Archivo:</strong> ${v.output_filename || 'N/A'}</p>
+                        ${videoPath ? `
+                        <video width="100%" style="max-height: 300px; border-radius: 8px; margin: 10px 0;" controls>
+                            <source src="/video/${encodedPath}" type="video/mp4">
+                            Tu navegador no soporta video HTML5
+                        </video>
+                        ` : ''}
+                        <p><strong>Archivo:</strong> ${videoPath || 'N/A'}</p>
                         <p><strong>Duración:</strong> ${v.duration_seconds ? Math.floor(v.duration_seconds/60) + ' min' : 'N/A'}</p>
                         <div class="status-badge ${status}" style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 10px; background: ${status === 'approved' ? '#4ade80' : status === 'rejected' ? '#f87171' : '#fbbf24'}; color: #000;">${status.toUpperCase()}</div>
                         ${v.summary ? '<p>' + v.summary + '</p>' : ''}
-                        <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
                             <button onclick="setVideoStatus('${type}', ${v.id}, 'approved')" 
-                                style="flex: 1; padding: 8px; background: linear-gradient(135deg, #4ade80, #22c55e); color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" 
+                                style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #4ade80, #22c55e); color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" 
                                 ${status === 'approved' ? 'disabled style="opacity:0.5"' : ''}>✓ Aprobar</button>
                             <button onclick="setVideoStatus('${type}', ${v.id}, 'rejected')" 
-                                style="flex: 1; padding: 8px; background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" 
+                                style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" 
                                 ${status === 'rejected' ? 'disabled style="opacity:0.5"' : ''}>✗ Rechazar</button>
+                            ${folderPath ? `<button onclick="openFolder('${folderPath.replace(/\\\\/g, '\\\\\\\\')}')" 
+                                style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📁 Carpeta</button>` : ''}
                         </div>
                     </div>
                 `}).join('');
@@ -529,6 +541,24 @@ class ShortsHandler(SimpleHTTPRequestHandler):
             self.end_headers()
             long_videos = get_long_videos_by_short(short_id)
             self.wfile.write(json.dumps(long_videos).encode())
+        elif self.path.startswith('/video/'):
+            # Serve video files from local filesystem
+            import os
+            import urllib.parse
+            video_path = urllib.parse.unquote(self.path[7:])  # Remove '/video/'
+            
+            if os.path.exists(video_path) and video_path.endswith('.mp4'):
+                self.send_response(200)
+                self.send_header('Content-type', 'video/mp4')
+                self.send_header('Accept-Ranges', 'bytes')
+                file_size = os.path.getsize(video_path)
+                self.send_header('Content-Length', str(file_size))
+                self.end_headers()
+                
+                with open(video_path, 'rb') as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_error(404, 'Video not found')
         else:
             self.send_error(404)
     
