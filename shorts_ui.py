@@ -7,14 +7,91 @@ Abrir: http://localhost:5000
 """
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
+import os
+from pathlib import Path
 from database import (
     get_all_shorts, get_all_videos, approve_short, reject_short,
     update_short_status, get_shorts_by_video,
     get_extended_videos_by_short, get_long_videos_by_short,
-    update_extended_video_status, update_long_video_status
+    update_extended_video_status, update_long_video_status,
+    get_connection
 )
 
 PORT = 5000
+
+
+def filter_existing_shorts(shorts: list) -> list:
+    """Filtra shorts que realmente existen en el sistema de archivos."""
+    existing = []
+    for short in shorts:
+        # Verificar si el archivo o carpeta existe
+        folder_path = short.get('folder_path', '')
+        output_file = short.get('output_filename', '')
+        
+        # Si tiene folder_path, verificar que existe
+        if folder_path and os.path.exists(folder_path):
+            existing.append(short)
+        # Si no tiene folder_path pero tiene output_filename, verificar ese
+        elif output_file and os.path.exists(output_file):
+            existing.append(short)
+        # Si tiene output_filename como nombre de archivo, buscar en clips
+        elif output_file:
+            clips_path = Path("output/clips")
+            if clips_path.exists():
+                # Buscar el archivo en cualquier subcarpeta
+                found = list(clips_path.rglob(output_file))
+                if found:
+                    existing.append(short)
+    return existing
+
+
+def filter_existing_videos(videos: list) -> list:
+    """Filtra videos extended/long que realmente existen."""
+    existing = []
+    for video in videos:
+        output_file = video.get('output_filename', '')
+        if output_file and os.path.exists(output_file):
+            existing.append(video)
+    return existing
+
+
+def sync_database_with_files():
+    """Elimina de la BD los registros de archivos que ya no existen."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Sincronizar shorts
+    cursor.execute("SELECT id, folder_path, output_filename FROM shorts")
+    shorts = cursor.fetchall()
+    for short_id, folder_path, output_file in shorts:
+        exists = False
+        if folder_path and os.path.exists(folder_path):
+            exists = True
+        elif output_file and os.path.exists(output_file):
+            exists = True
+        
+        if not exists:
+            cursor.execute("DELETE FROM shorts WHERE id = ?", (short_id,))
+            print(f"🗑️ Short {short_id} eliminado de BD (archivo no existe)")
+    
+    # Sincronizar extended
+    cursor.execute("SELECT id, output_filename FROM extended_videos")
+    extended = cursor.fetchall()
+    for ext_id, output_file in extended:
+        if not output_file or not os.path.exists(output_file):
+            cursor.execute("DELETE FROM extended_videos WHERE id = ?", (ext_id,))
+            print(f"🗑️ Extended {ext_id} eliminado de BD")
+    
+    # Sincronizar long
+    cursor.execute("SELECT id, output_filename FROM long_videos")
+    long_vids = cursor.fetchall()
+    for long_id, output_file in long_vids:
+        if not output_file or not os.path.exists(output_file):
+            cursor.execute("DELETE FROM long_videos WHERE id = ?", (long_id,))
+            print(f"🗑️ Long {long_id} eliminado de BD")
+    
+    conn.commit()
+    conn.close()
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="es">
@@ -519,27 +596,27 @@ class ShortsHandler(SimpleHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            shorts = get_shorts_by_video(video_id)
+            shorts = filter_existing_shorts(get_shorts_by_video(video_id))
             self.wfile.write(json.dumps(shorts).encode())
         elif self.path == '/api/shorts':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            shorts = get_all_shorts()
+            shorts = filter_existing_shorts(get_all_shorts())
             self.wfile.write(json.dumps(shorts).encode())
         elif self.path.startswith('/api/shorts/') and '/extended' in self.path:
             short_id = int(self.path.split('/')[3])
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            extended = get_extended_videos_by_short(short_id)
+            extended = filter_existing_videos(get_extended_videos_by_short(short_id))
             self.wfile.write(json.dumps(extended).encode())
         elif self.path.startswith('/api/shorts/') and '/long' in self.path:
             short_id = int(self.path.split('/')[3])
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            long_videos = get_long_videos_by_short(short_id)
+            long_videos = filter_existing_videos(get_long_videos_by_short(short_id))
             self.wfile.write(json.dumps(long_videos).encode())
         elif self.path.startswith('/video/'):
             # Serve video files from local filesystem
@@ -619,7 +696,12 @@ class ShortsHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    print(f"🚀 Servidor iniciado en http://localhost:{PORT}")
+    # Sincronizar BD con archivos locales al iniciar
+    print("🔄 Sincronizando base de datos con archivos locales...")
+    sync_database_with_files()
+    print("✅ Sincronización completada")
+    
+    print(f"\n🚀 Servidor iniciado en http://localhost:{PORT}")
     print("   Abre el navegador para gestionar tus shorts")
     print("   Ctrl+C para detener")
     

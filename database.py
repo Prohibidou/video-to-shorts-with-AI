@@ -154,7 +154,8 @@ def save_short(
     start_time: str,
     end_time: str,
     output_filename: str,
-    selection_reason: str = None
+    selection_reason: str = None,
+    folder_path: str = None
 ) -> int:
     """
     Save a short to the database.
@@ -169,6 +170,7 @@ def save_short(
         output_filename: Archivo .mp4
         selection_reason: Explicación detallada de por qué fue seleccionado este clip
                           (incluye justificación teológica, impacto apologético, citas clave, etc.)
+        folder_path: Carpeta donde está guardado el short
     
     Returns: ID del short
     """
@@ -177,10 +179,10 @@ def save_short(
     
     cursor.execute('''
         INSERT INTO shorts (video_id, title, summary, script, start_time, end_time, 
-                           output_filename, selection_reason)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                           output_filename, selection_reason, folder_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (video_id, title, summary, script, start_time, end_time, 
-          output_filename, selection_reason))
+          output_filename, selection_reason, folder_path))
     
     short_id = cursor.lastrowid
     conn.commit()

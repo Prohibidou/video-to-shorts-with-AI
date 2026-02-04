@@ -37,6 +37,8 @@ class Segment:
     start: str          # Formato: "MM:SS" o "HH:MM:SS"
     end: str            # Formato: "MM:SS" o "HH:MM:SS"
     name: str           # Nombre descriptivo del clip
+    hook_duration: float = 4.0  # Duración del gancho en segundos
+    hook_text: str = None       # Texto del gancho (opcional, si None se genera automáticamente)
     
 
 def time_to_seconds(time_str: str) -> float:
@@ -120,8 +122,8 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
     
     print(f"   🎤 Transcribiendo audio...")
     
-    # Usar modelo small para mejor calidad de transcripción
-    model = WhisperModel("small", device="cpu", compute_type="int8")
+    # Usar modelo tiny para reducir uso de memoria
+    model = WhisperModel("tiny", device="cpu", compute_type="int8")
     
     segments, info = model.transcribe(
         str(video_path),
@@ -192,6 +194,27 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
             segment["text"] = remove_accents(segment["text"])
 
     return result
+
+
+def extract_hook_text(transcription: list[dict], hook_duration: float) -> tuple[str, float]:
+    """
+    Extrae el texto de los primeros segundos para usar como gancho.
+    Retorna (texto_del_gancho, tiempo_final_del_gancho).
+    El tiempo final es el end del último segmento incluido en el gancho.
+    """
+    hook_words = []
+    hook_end_time = hook_duration
+    
+    for seg in transcription:
+        # Incluir segmentos que empiezan antes del hook_duration
+        if seg["start"] < hook_duration:
+            hook_words.append(seg["text"])
+            hook_end_time = max(hook_end_time, seg["end"])
+        else:
+            break
+    
+    return " ".join(hook_words), hook_end_time
+
 
 
 def create_srt_file(transcription: list[dict], output_path: Path) -> Path:
@@ -298,7 +321,8 @@ def extract_clip_with_subtitles(
     make_vertical: bool = False,
     add_subtitles: bool = True,
     subtitle_style: str = "modern",
-    language: str = "es"
+    language: str = "es",
+    add_hook: bool = True  # Agregar texto de gancho fijo en los primeros segundos
 ) -> Tuple[Optional[Path], str]:
     """Extrae un clip del video fuente con subtítulos automáticos.
     Retorna (path_archivo, script_texto).
@@ -350,19 +374,67 @@ def extract_clip_with_subtitles(
         temp_clip.rename(output_file)
         return output_file, ""
     
-    # Paso 3: Crear archivo de subtítulos SRT temporal para FFmpeg
+    # Determinar hook (gancho) para los primeros segundos
+    hook_duration = getattr(segment, 'hook_duration', 4.0)
+    hook_text = getattr(segment, 'hook_text', None)
+    hook_end_time = hook_duration
+    
+    if add_hook and not hook_text:
+        # Extraer texto del gancho automáticamente de la transcripción
+        hook_text, hook_end_time = extract_hook_text(transcription, hook_duration)
+        print(f"   🎣 Gancho detectado: \"{hook_text[:50]}...\" (0-{hook_end_time:.1f}s)")
+    elif add_hook and hook_text:
+        print(f"   🎣 Gancho manual: \"{hook_text[:50]}...\"")
+    
+    
+    # Paso 3: Crear archivo SRT con gancho incluido como primer subtítulo
     subs_file = output_dir / f"subs_{clip_index:02d}.srt"
-    create_srt_file(transcription, subs_file)
+    
+    with open(subs_file, 'w', encoding='utf-8') as f:
+        subtitle_index = 1
+        
+        # Agregar gancho como primer subtítulo (texto completo, fijo durante ~4 segundos)
+        if add_hook and hook_text:
+            # Dividir en líneas si es muy largo (máximo ~35 caracteres por línea)
+            words = hook_text.split()
+            lines = []
+            current_line = []
+            for word in words:
+                current_line.append(word)
+                if len(" ".join(current_line)) > 35:
+                    lines.append(" ".join(current_line))
+                    current_line = []
+            if current_line:
+                lines.append(" ".join(current_line))
+            formatted_hook = "\n".join(lines)
+            
+            f.write(f"{subtitle_index}\n")
+            f.write(f"00:00:00,000 --> {seconds_to_srt_time(hook_end_time)}\n")
+            f.write(f"{formatted_hook}\n\n")
+            subtitle_index += 1
+        
+        # Agregar subtítulos normales (después del gancho)
+        for seg in transcription:
+            # Skipear los que están dentro del período del gancho
+            if add_hook and hook_text and seg["start"] < hook_end_time:
+                continue
+            
+            start_time = seconds_to_srt_time(seg["start"])
+            end_time = seconds_to_srt_time(seg["end"])
+            text = seg["text"]
+            
+            f.write(f"{subtitle_index}\n")
+            f.write(f"{start_time} --> {end_time}\n")
+            f.write(f"{text}\n\n")
+            subtitle_index += 1
     
     # Paso 4: Quemar subtítulos en el video
     print(f"   📝 Agregando subtítulos al video...")
     
-    # Estilo de subtítulos para Shorts - posición en zona inferior, debajo del video
-    # MarginV=30: muy cerca del borde inferior (zona blur)
-    # FontSize=16: compacto para no invadir el área del video
+    # Estilo de subtítulos para Shorts
     subtitle_style = (
         "FontName=Arial,"
-        "FontSize=16,"
+        "FontSize=18,"
         "Bold=1,"
         "PrimaryColour=&H00FFFFFF,"
         "OutlineColour=&H00000000,"
@@ -376,7 +448,6 @@ def extract_clip_with_subtitles(
     
     if make_vertical:
         # Formato vertical 9:16 con subtítulos
-        # Para evitar problemas con paths de Windows, ejecutamos desde el directorio del video
         filter_complex = (
             f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
             f"crop=1080:1920,boxblur=20:5[bg];"
@@ -497,8 +568,6 @@ def process_video(
     
     # Crear directorio de salida
     output_dir.mkdir(parents=True, exist_ok=True)
-    clips_dir = output_dir / "clips"
-    clips_dir.mkdir(exist_ok=True)
     
     # Descargar video
     source_video = download_video(url, output_dir)
@@ -507,6 +576,11 @@ def process_video(
     video_title = get_video_title(url)
     if video_title:
         print(f"   📺 Título: {video_title}")
+    
+    # Crear carpeta para el video usando el título
+    safe_video_title = "".join(c if c.isalnum() or c in "- _" else "_" for c in (video_title or "Video"))
+    video_clips_dir = output_dir / "clips" / safe_video_title
+    video_clips_dir.mkdir(parents=True, exist_ok=True)
     
     # Guardar video en base de datos
     video_id = None
@@ -526,12 +600,17 @@ def process_video(
     all_scripts = []  # Para guardar transcripción completa del video
     
     for i, segment in enumerate(segments, 1):
+        # Crear carpeta individual para este short
+        safe_segment_name = "".join(c if c.isalnum() or c in "- _" else "_" for c in segment.name)
+        short_folder = video_clips_dir / f"{i:02d}_{safe_segment_name}"
+        short_folder.mkdir(parents=True, exist_ok=True)
+        
         if fast_mode:
-            clip = extract_clip_fast(source_video, segment, clips_dir, i)
+            clip = extract_clip_fast(source_video, segment, short_folder, i)
             script_text = ""
         else:
             clip, script_text = extract_clip_with_subtitles(
-                source_video, segment, clips_dir, i,
+                source_video, segment, short_folder, i,
                 make_vertical=make_vertical,
                 add_subtitles=add_subtitles,
                 subtitle_style=subtitle_style,
@@ -542,7 +621,7 @@ def process_video(
             extracted_clips.append(clip)
             all_scripts.append(script_text)
             
-            # Guardar short en base de datos
+            # Guardar short en base de datos con folder_path
             if DB_AVAILABLE and video_id:
                 try:
                     short_id = save_short(
@@ -552,7 +631,8 @@ def process_video(
                         script=script_text,
                         start_time=segment.start,
                         end_time=segment.end,
-                        output_filename=clip.name
+                        output_filename=str(clip),
+                        folder_path=str(short_folder)
                     )
                     print(f"   💾 Short guardado en BD (ID: {short_id})")
                 except Exception as e:
@@ -575,7 +655,7 @@ def process_video(
     print("\n" + "=" * 60)
     print("✅ PROCESO COMPLETADO")
     print("=" * 60)
-    print(f"   📂 Clips guardados en: {clips_dir}")
+    print(f"   📂 Clips guardados en: {video_clips_dir}")
     print(f"   📊 Clips extraídos: {len(extracted_clips)}/{len(segments)}")
     if add_subtitles:
         print(f"   📝 Archivos SRT también guardados para cada clip")
@@ -594,16 +674,10 @@ if __name__ == "__main__":
     # URL del video de YouTube
     VIDEO_URL = "https://www.youtube.com/watch?v=JxAdV9YVbsY"
     
-    # Lista de segmentos a extraer
-    # Formato: Segment(inicio, fin, nombre_descriptivo)
+    # Lista de segmentos a extraer (1 short para prueba completa)
     SEGMENTS = [
-        Segment("11:29", "11:43", "Identidad Catolica de los Apostoles"),
-        Segment("12:59", "13:33", "Refutacion Sola Fide y Scriptura"),
-        Segment("27:53", "28:40", "El peligro de la falsa doctrina"),
-        Segment("37:39", "38:27", "Jerarquia y Titulos Biblicos"),
-        Segment("42:48", "43:18", "Salvacion por Caridad y Obras"),
-        Segment("55:30", "56:18", "Eucaristia y el Altar"),
-        Segment("59:06", "59:52", "La Unidad de la Iglesia"),
+        # Los protestantes que no les mientan - argumento nuclear
+        Segment("12:58", "14:00", "A Los Protestantes No Les Mientan"),
     ]
     
     # Configuración

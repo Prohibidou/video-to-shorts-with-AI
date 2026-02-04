@@ -72,7 +72,7 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     
     extended_dir.mkdir(parents=True, exist_ok=True)
     
-    # Extract the extended clip
+    # Extract the extended clip (sin gancho para extended - solo para shorts)
     output_file, script = extract_clip_with_subtitles(
         source_video=source_video,
         segment=segment,
@@ -81,7 +81,8 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
         make_vertical=True,  # Extended en formato vertical (short de 3 min)
         add_subtitles=True,
         subtitle_style="modern",
-        language="es"
+        language="es",
+        add_hook=True  # Extended también usa gancho como los shorts
     )
     
     # Calculate duration
