@@ -324,9 +324,9 @@ def extract_clip_with_subtitles(
     subtitle_style: str = "modern",
     language: str = "es",
     add_hook: bool = True  # Agregar texto de gancho fijo en los primeros segundos
-) -> Tuple[Optional[Path], str]:
+) -> Tuple[Optional[Path], str, Optional[str]]:
     """Extrae un clip del video fuente con subtítulos automáticos.
-    Retorna (path_archivo, script_texto).
+    Retorna (path_archivo, script_texto, hook_texto).
     """
     
     start_seconds = time_to_seconds(segment.start)
@@ -359,13 +359,13 @@ def extract_clip_with_subtitles(
     subprocess.run(cmd_extract, capture_output=True, text=True)
     if not temp_clip.exists():
         print(f"   ❌ Error: No se pudo crear el clip temporal")
-        return None
+        return None, "", None
     
     if not add_subtitles:
         # Si no queremos subtítulos, renombrar y retornar
         temp_clip.rename(output_file)
         print(f"   ✅ Guardado: {output_file.name}")
-        return output_file, ""
+        return output_file, "", None
     
     # Paso 2: Transcribir el clip (máximo 2 palabras por fragmento = 1 sola línea)
     transcription = transcribe_audio(temp_clip, language, max_words_per_line=2)
@@ -373,7 +373,7 @@ def extract_clip_with_subtitles(
     if not transcription:
         print(f"   ⚠️  No se detectó audio/voz. Guardando sin subtítulos.")
         temp_clip.rename(output_file)
-        return output_file, ""
+        return output_file, "", None
     
     # Determinar hook (gancho) para los primeros segundos
     hook_duration = getattr(segment, 'hook_duration', 4.0)
@@ -496,13 +496,13 @@ def extract_clip_with_subtitles(
     # Verificar si el archivo de salida se creó correctamente
     if not output_file.exists():
         print(f"   ❌ Error: No se pudo crear el video con subtítulos")
-        return None, ""
+        return None, "", None
     
     # Extraer texto completo del script
     script_text = " ".join([seg["text"] for seg in transcription])
     
     print(f"   ✅ Guardado: {output_file.name} (con subtítulos)")
-    return output_file, script_text
+    return output_file, script_text, hook_text
 
 
 def extract_clip_fast(
@@ -609,8 +609,9 @@ def process_video(
         if fast_mode:
             clip = extract_clip_fast(source_video, segment, short_folder, i)
             script_text = ""
+            final_hook_text = None
         else:
-            clip, script_text = extract_clip_with_subtitles(
+            clip, script_text, final_hook_text = extract_clip_with_subtitles(
                 source_video, segment, short_folder, i,
                 make_vertical=make_vertical,
                 add_subtitles=add_subtitles,
@@ -633,7 +634,8 @@ def process_video(
                         start_time=segment.start,
                         end_time=segment.end,
                         output_filename=str(clip),
-                        folder_path=str(short_folder)
+                        folder_path=str(short_folder),
+                        hook_text=final_hook_text
                     )
                     print(f"   💾 Short guardado en BD (ID: {short_id})")
                 except Exception as e:
@@ -675,10 +677,12 @@ if __name__ == "__main__":
     # URL del video de YouTube
     VIDEO_URL = "https://www.youtube.com/watch?v=JxAdV9YVbsY"
     
-    # Lista de segmentos a extraer (1 short para prueba completa)
+    # Lista de segmentos a extraer (2 shorts apologéticos)
     SEGMENTS = [
         # Los protestantes que no les mientan - argumento nuclear
         Segment("12:58", "14:00", "A Los Protestantes No Les Mientan"),
+        # No hay herejía entre ustedes - iglesia primitiva sin corrupción
+        Segment("24:26", "25:30", "No Hay Herejia Entre Ustedes"),
     ]
     
     # Configuración

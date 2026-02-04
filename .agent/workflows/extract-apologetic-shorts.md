@@ -35,6 +35,12 @@ Proceso:
 - Duración: 3 minutos
 - Formato vertical 9:16 igual que shorts
 - Usar `generate_extended.py` después de crear los shorts
+- **SIEMPRE generar Extended junto con los Shorts**
+
+### Long Videos: ~10 MINUTOS (SOLO SI EL USUARIO LO PIDE)
+> [!CAUTION]
+> **NUNCA generar Long videos (~10 min) a menos que el usuario lo solicite EXPLÍCITAMENTE.**
+> Por defecto, solo generar Shorts (~1 min) y Extended (~3 min).
 
 ### Criterio de Extensión
 Al analizar la transcripción para definir timestamps:
@@ -53,6 +59,17 @@ Los shorts generados incluyen un **texto de gancho fijo** en los primeros ~4 seg
 - **Visible desde el segundo 0** hasta que termina la frase del gancho (~4s)
 - **Después del gancho**: subtítulos normales aparecen palabra por palabra
 - El texto del gancho se extrae automáticamente de la transcripción
+
+### Consistencia del Gancho en Extended/Long
+
+> [!IMPORTANT]
+> Los videos **Extended (~3 min)** y **Long (~10 min)** utilizan **exactamente el mismo texto de gancho** que el short original de ~1 min.
+> 
+> Esto se logra extrayendo el gancho del `script` del short guardado en la base de datos (las primeras ~15 palabras ≈ 4 segundos de habla).
+
+Si un Extended/Long tiene un gancho diferente al short, verificar que:
+1. El short esté correctamente guardado en la BD con su `script`
+2. Se esté usando la versión actualizada de `generate_extended.py` y `generate_long.py`
 
 ---
 
@@ -146,7 +163,7 @@ Esto ejecutará automáticamente:
 python generate_extended.py
 ```
 
-4. **Generar Long** (opcional, videos de 10 min):
+4. **Generar Long** (⚠️ SOLO si el usuario lo solicita explícitamente):
 ```bash
 python generate_long.py
 ```

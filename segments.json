@@ -1,45 +1,9 @@
-{
-    "video_url": "https://www.youtube.com/watch?v=JxAdV9YVbsY",
-    "segments": [
-        {
-            "start": "10:37",
-            "end": "11:20",
-            "name": "Iglesia_Catolica_Primitiva"
-        },
-        {
-            "start": "12:58",
-            "end": "13:45",
-            "name": "Doctrinas_Apostolicas_Son_Catolicas"
-        },
-        {
-            "start": "21:43",
-            "end": "22:25",
-            "name": "Ignacio_Contra_Herejes"
-        },
-        {
-            "start": "24:26",
-            "end": "25:05",
-            "name": "No_Herejia_Entre_Ustedes"
-        },
-        {
-            "start": "27:37",
-            "end": "28:20",
-            "name": "Herejia_Merece_Infierno"
-        },
-        {
-            "start": "31:53",
-            "end": "32:35",
-            "name": "Herejes_No_Heredan_Reino"
-        },
-        {
-            "start": "43:07",
-            "end": "43:50",
-            "name": "Fe_Y_Caridad_Para_Salvarse"
-        },
-        {
-            "start": "55:22",
-            "end": "56:05",
-            "name": "Fuera_Altar_Sin_Pan_De_Dios"
-        }
-    ]
-}
+[
+    {
+        "start": "12:55",
+        "end": "13:58",
+        "name": "A Los Protestantes No Les Mientan",
+        "hook_duration": 4.0,
+        "hook_text": "La Iglesia apostólica es la Iglesia Católica y a los protestantes no les mientan"
+    }
+]

@@ -43,12 +43,28 @@ def add_minutes_to_time(time_str: str, minutes_to_add: int) -> str:
         return f"{mins}:{secs:02d}"
 
 
+def extract_hook_from_script(script: str, max_words: int = 15) -> str:
+    """
+    Extrae el texto del gancho del script del short.
+    El gancho son aproximadamente las primeras 15 palabras (~4 segundos de habla).
+    """
+    if not script:
+        return None
+    
+    words = script.split()
+    if len(words) <= max_words:
+        return script.strip()
+    
+    return " ".join(words[:max_words]).strip()
+
+
 def generate_extended_for_short(short: dict, video_url: str, source_video: Path, output_base: Path):
     """Generate extended version for a single short."""
     
     short_id = short['id']
     title = short['title']
     start_time = short['start_time']
+    script = short.get('script', '')
     
     # Extended = start_time + 3 minutes
     extended_end = add_minutes_to_time(start_time, 3)
@@ -56,11 +72,21 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     print(f"\n📹 Generando Extended para: {title}")
     print(f"   Start: {start_time} → End: {extended_end} (3 min)")
     
-    # Create segment
+    # Priority: Hook stored in DB > Hook extracted from script
+    hook_text = short.get('hook_text')
+    if not hook_text:
+        hook_text = extract_hook_from_script(script)
+        
+    if hook_text:
+        print(f"   🎣 Usando gancho del short original: \"{hook_text[:50]}...\"")
+    
+    # Create segment con el mismo hook_text que el short original
     segment = Segment(
         start=start_time,
         end=extended_end,
-        name=f"{title}_EXTENDED"
+        name=f"{title}_EXTENDED",
+        hook_duration=4.0,
+        hook_text=hook_text  # Usar el mismo gancho que el short original
     )
     
     # Output directory for this short's extended version
@@ -73,7 +99,7 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     extended_dir.mkdir(parents=True, exist_ok=True)
     
     # Extract the extended clip (sin gancho para extended - solo para shorts)
-    output_file, script = extract_clip_with_subtitles(
+    output_file, script, _ = extract_clip_with_subtitles(
         source_video=source_video,
         segment=segment,
         output_dir=extended_dir,

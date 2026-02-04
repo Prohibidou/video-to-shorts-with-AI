@@ -100,6 +100,10 @@ def init_db():
         cursor.execute("ALTER TABLE shorts ADD COLUMN folder_path TEXT")
     except sqlite3.OperationalError:
         pass
+    try:
+        cursor.execute("ALTER TABLE shorts ADD COLUMN hook_text TEXT")
+    except sqlite3.OperationalError:
+        pass
     
     conn.commit()
     conn.close()
@@ -155,7 +159,8 @@ def save_short(
     end_time: str,
     output_filename: str,
     selection_reason: str = None,
-    folder_path: str = None
+    folder_path: str = None,
+    hook_text: str = None
 ) -> int:
     """
     Save a short to the database.
@@ -171,6 +176,7 @@ def save_short(
         selection_reason: Explicación detallada de por qué fue seleccionado este clip
                           (incluye justificación teológica, impacto apologético, citas clave, etc.)
         folder_path: Carpeta donde está guardado el short
+        hook_text: Texto del gancho visual (si existe)
     
     Returns: ID del short
     """
@@ -179,10 +185,10 @@ def save_short(
     
     cursor.execute('''
         INSERT INTO shorts (video_id, title, summary, script, start_time, end_time, 
-                           output_filename, selection_reason, folder_path)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           output_filename, selection_reason, folder_path, hook_text)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (video_id, title, summary, script, start_time, end_time, 
-          output_filename, selection_reason, folder_path))
+          output_filename, selection_reason, folder_path, hook_text))
     
     short_id = cursor.lastrowid
     conn.commit()
@@ -300,7 +306,7 @@ def get_shorts_by_video(video_id: int) -> list[dict]:
     
     cursor.execute("""
         SELECT id, video_id, title, summary, script, start_time, end_time, 
-               output_filename, folder_path, selection_reason, status, created_at
+               output_filename, folder_path, selection_reason, status, created_at, hook_text
         FROM shorts WHERE video_id = ?
         ORDER BY id
     """, (video_id,))
@@ -319,7 +325,8 @@ def get_shorts_by_video(video_id: int) -> list[dict]:
         "folder_path": row[8],
         "selection_reason": row[9],
         "status": row[10],
-        "created_at": row[11]
+        "created_at": row[11],
+        "hook_text": row[12]
     } for row in rows]
 
 

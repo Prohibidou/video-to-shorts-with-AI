@@ -35,6 +35,21 @@ def add_minutes_to_time(time_str: str, minutes: int) -> str:
         return f"{mins}:{secs:02d}"
 
 
+def extract_hook_from_script(script: str, max_words: int = 15) -> str:
+    """
+    Extrae el texto del gancho del script del short.
+    El gancho son aproximadamente las primeras 15 palabras (~4 segundos de habla).
+    """
+    if not script:
+        return None
+    
+    words = script.split()
+    if len(words) <= max_words:
+        return script.strip()
+    
+    return " ".join(words[:max_words]).strip()
+
+
 def generate_long_for_short(short: dict, source_video: Path, output_base: Path) -> Path:
     """Generate a 10-minute long video for a single short."""
     
@@ -42,6 +57,7 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
     title = short['title']
     start_time = short['start_time']
     short_folder = short.get('folder_path', '')
+    script = short.get('script', '')
     
     # Long = start_time + 10 minutes
     long_end = add_minutes_to_time(start_time, 10)
@@ -57,15 +73,25 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
     
     long_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create segment
+    # Priority: Hook stored in DB > Hook extracted from script
+    hook_text = short.get('hook_text')
+    if not hook_text:
+        hook_text = extract_hook_from_script(script)
+        
+    if hook_text:
+        print(f"   🎣 Usando gancho del short original: \"{hook_text[:50]}...\"")
+    
+    # Create segment con el mismo hook_text que el short original
     segment = Segment(
         start=start_time,
         end=long_end,
-        name=f"{title}_LONG"
+        name=f"{title}_LONG",
+        hook_duration=4.0,
+        hook_text=hook_text  # Usar el mismo gancho que el short original
     )
     
     # Extract clip with subtitles (vertical format)
-    output_file, script = extract_clip_with_subtitles(
+    output_file, script, _ = extract_clip_with_subtitles(
         source_video=source_video,
         segment=segment,
         output_dir=long_dir,
@@ -73,7 +99,8 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
         make_vertical=True,
         add_subtitles=True,
         subtitle_style="modern",
-        language="es"
+        language="es",
+        add_hook=True  # Usar gancho del short original
     )
     
     # Calculate duration
