@@ -122,8 +122,9 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
     
     print(f"   🎤 Transcribiendo audio...")
     
-    # Usar modelo tiny para reducir uso de memoria
-    model = WhisperModel("tiny", device="cpu", compute_type="int8")
+    # IMPORTANTE: Usar modelo 'small' para mejor calidad (NUNCA usar 'tiny')
+    # Procesar videos uno a uno para evitar problemas de RAM
+    model = WhisperModel("small", device="cpu", compute_type="int8")
     
     segments, info = model.transcribe(
         str(video_path),

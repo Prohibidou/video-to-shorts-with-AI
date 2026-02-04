@@ -163,5 +163,6 @@ python shorts_ui.py
 ## Notas Finales
 - Clips optimizados para YouTube Shorts (vertical 9:16)
 - Subtítulos hardcoded con estilo bold
-- Modelo Whisper 'small' para mejor calidad de transcripción
+- **Modelo Whisper 'small' siempre** (NUNCA usar 'tiny' - calidad insuficiente)
+- Videos se procesan uno a uno para evitar problemas de RAM
 - El análisis lo hace Claude directamente, sin APIs externas
