@@ -3,7 +3,7 @@ Generate Extended Videos from Shorts
 ====================================
 Creates 3-minute extended versions of each short.
 Same start timestamp, extended to ~3 minutes.
-Extended en formato vertical (short de 3 min).
+Extended in vertical format (3 min short).
 
 Usage:
     python generate_extended.py
@@ -45,8 +45,8 @@ def add_minutes_to_time(time_str: str, minutes_to_add: int) -> str:
 
 def extract_hook_from_script(script: str, max_words: int = 15) -> str:
     """
-    Extrae el texto del gancho del script del short.
-    El gancho son aproximadamente las primeras 15 palabras (~4 segundos de habla).
+    Extracts the hook text from the short's script.
+    The hook is approximately the first 15 words (~4 seconds of speech).
     """
     if not script:
         return None
@@ -69,7 +69,7 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     # Extended = start_time + 3 minutes
     extended_end = add_minutes_to_time(start_time, 3)
     
-    print(f"\n📹 Generando Extended para: {title}")
+    print(f"\n📹 Generating Extended for: {title}")
     print(f"   Start: {start_time} → End: {extended_end} (3 min)")
     
     # Priority: Hook stored in DB > Hook extracted from script
@@ -78,15 +78,15 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
         hook_text = extract_hook_from_script(script)
         
     if hook_text:
-        print(f"   🎣 Usando gancho del short original: \"{hook_text[:50]}...\"")
+        print(f"   🎣 Using hook from original short: \"{hook_text[:50]}...\"")
     
-    # Create segment con el mismo hook_text que el short original
+    # Create segment with the same hook_text as the original short
     segment = Segment(
         start=start_time,
         end=extended_end,
         name=f"{title}_EXTENDED",
         hook_duration=4.0,
-        hook_text=hook_text  # Usar el mismo gancho que el short original
+        hook_text=hook_text  # Use the same hook as the original short
     )
     
     # Output directory for this short's extended version
@@ -98,17 +98,17 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     
     extended_dir.mkdir(parents=True, exist_ok=True)
     
-    # Extract the extended clip (sin gancho para extended - solo para shorts)
+    # Extract the extended clip (with hook for extended as well)
     output_file, script, _ = extract_clip_with_subtitles(
         source_video=source_video,
         segment=segment,
         output_dir=extended_dir,
         clip_index=1,
-        make_vertical=True,  # Extended en formato vertical (short de 3 min)
+        make_vertical=True,  # Extended in vertical format (3 min short)
         add_subtitles=True,
         subtitle_style="modern",
         language="es",
-        add_hook=True  # Extended también usa gancho como los shorts
+        add_hook=True  # Extended also uses hook like shorts
     )
     
     # Calculate duration
@@ -118,28 +118,28 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     extended_id = save_extended_video(
         short_id=short_id,
         title=f"{title} - Extended",
-        summary=f"Versión extendida (3 min) del short '{title}'",
+        summary=f"Extended version (3 min) of short '{title}'",
         script=script,
         duration_seconds=duration,
         output_filename=str(output_file)
     )
     
-    print(f"   ✅ Extended guardado: {output_file}")
-    print(f"   📊 ID en BD: {extended_id}")
+    print(f"   ✅ Extended saved: {output_file}")
+    print(f"   📊 DB ID: {extended_id}")
     
     return extended_id
 
 
 def main():
     print("=" * 60)
-    print("🎬 GENERADOR DE VIDEOS EXTENDED")
+    print("🎬 EXTENDED VIDEO GENERATOR")
     print("=" * 60)
     
     # Get all videos and shorts
     videos = get_all_videos()
     
     if not videos:
-        print("❌ No hay videos en la base de datos")
+        print("❌ No videos in database")
         return
     
     for video in videos:
@@ -148,16 +148,16 @@ def main():
         video_title = video.get('title', 'Video')
         clips_folder = video.get('clips_folder', '')
         
-        print(f"\n📺 Procesando video: {video_title}")
+        print(f"\n📺 Processing video: {video_title}")
         print(f"   URL: {video_url}")
         
         shorts = get_shorts_by_video(video_id)
         
         if not shorts:
-            print("   ⚠️ No hay shorts para este video")
+            print("   ⚠️ No shorts for this video")
             continue
         
-        print(f"   📊 Shorts encontrados: {len(shorts)}")
+        print(f"   📊 Shorts found: {len(shorts)}")
         
         # Find source video file
         if clips_folder:
@@ -182,27 +182,29 @@ def main():
                     break
         
         if not source_video or not source_video.exists():
-            print(f"   ⚠️ Archivo fuente no encontrado en {source_dir}")
-            print("   🔄 Descargando video...")
+            print(f"   ⚠️ Source file not found in {source_dir}")
+            print("   🔄 Downloading video...")
             
             download_dir = source_dir / "source"
             download_dir.mkdir(parents=True, exist_ok=True)
             source_video = download_video(video_url, download_dir)
         
-        print(f"   📂 Video fuente: {source_video}")
+        print(f"   📂 Source video: {source_video}")
         
         # Process each short
         output_base = Path(clips_folder) if clips_folder else Path("output/extended")
         
         for short in shorts:
+            if short['title'] not in ["Sin Altar No Hay Pan", "Necesidad de Herejias"]:
+                continue
             try:
                 generate_extended_for_short(short, video_url, source_video, output_base)
             except Exception as e:
-                print(f"   ❌ Error procesando {short['title']}: {e}")
+                print(f"   ❌ Error processing {short['title']}: {e}")
                 continue
     
     print("\n" + "=" * 60)
-    print("✅ GENERACIÓN DE EXTENDED COMPLETADA")
+    print("✅ EXTENDED GENERATION COMPLETED")
     print("=" * 60)
 
 

@@ -1,2 +1,1 @@
-prompt al agente : "Ejecuta el workflow de shorts apologéticos con este video: [URL]"
-
+prompt to the agent: "Execute the apologetic shorts workflow with this video: [URL]"

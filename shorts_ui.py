@@ -1,9 +1,9 @@
 """
-Servidor web para gestionar shorts con UI visual.
-Filtra por video (URL) específico.
+Web server for managing shorts with visual UI.
+Filter by specific video (URL).
 
-Ejecutar: python shorts_ui.py
-Abrir: http://localhost:5000
+Run: python shorts_ui.py
+Open: http://localhost:5000
 """
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 import json
@@ -21,24 +21,24 @@ PORT = 5000
 
 
 def filter_existing_shorts(shorts: list) -> list:
-    """Filtra shorts que realmente existen en el sistema de archivos."""
+    """Filters shorts that actually exist in the file system."""
     existing = []
     for short in shorts:
-        # Verificar si el archivo o carpeta existe
+        # Check if file or folder exists
         folder_path = short.get('folder_path', '')
         output_file = short.get('output_filename', '')
         
-        # Si tiene folder_path, verificar que existe
+        # If has folder_path, check that it exists
         if folder_path and os.path.exists(folder_path):
             existing.append(short)
-        # Si no tiene folder_path pero tiene output_filename, verificar ese
+        # If no folder_path but has output_filename, check that
         elif output_file and os.path.exists(output_file):
             existing.append(short)
-        # Si tiene output_filename como nombre de archivo, buscar en clips
+        # If has output_filename as filename, search in clips
         elif output_file:
             clips_path = Path("output/clips")
             if clips_path.exists():
-                # Buscar el archivo en cualquier subcarpeta
+                # Search for file in any subfolder
                 found = list(clips_path.rglob(output_file))
                 if found:
                     existing.append(short)
@@ -46,7 +46,7 @@ def filter_existing_shorts(shorts: list) -> list:
 
 
 def filter_existing_videos(videos: list) -> list:
-    """Filtra videos extended/long que realmente existen."""
+    """Filters extended/long videos that actually exist."""
     existing = []
     for video in videos:
         output_file = video.get('output_filename', '')
@@ -56,11 +56,11 @@ def filter_existing_videos(videos: list) -> list:
 
 
 def sync_database_with_files():
-    """Elimina de la BD los registros de archivos que ya no existen."""
+    """Removes DB records for files that no longer exist."""
     conn = get_connection()
     cursor = conn.cursor()
     
-    # Sincronizar shorts
+    # Sync shorts
     cursor.execute("SELECT id, folder_path, output_filename FROM shorts")
     shorts = cursor.fetchall()
     for short_id, folder_path, output_file in shorts:
@@ -72,29 +72,29 @@ def sync_database_with_files():
         
         if not exists:
             cursor.execute("DELETE FROM shorts WHERE id = ?", (short_id,))
-            print(f"🗑️ Short {short_id} eliminado de BD (archivo no existe)")
+            print(f"🗑️ Short {short_id} removed from DB (file doesn't exist)")
     
-    # Sincronizar extended
+    # Sync extended
     cursor.execute("SELECT id, output_filename FROM extended_videos")
     extended = cursor.fetchall()
     for ext_id, output_file in extended:
         if not output_file or not os.path.exists(output_file):
             cursor.execute("DELETE FROM extended_videos WHERE id = ?", (ext_id,))
-            print(f"🗑️ Extended {ext_id} eliminado de BD")
+            print(f"🗑️ Extended {ext_id} removed from DB")
     
-    # Sincronizar long
+    # Sync long
     cursor.execute("SELECT id, output_filename FROM long_videos")
     long_vids = cursor.fetchall()
     for long_id, output_file in long_vids:
         if not output_file or not os.path.exists(output_file):
             cursor.execute("DELETE FROM long_videos WHERE id = ?", (long_id,))
-            print(f"🗑️ Long {long_id} eliminado de BD")
+            print(f"🗑️ Long {long_id} removed from DB")
     
     conn.commit()
     conn.close()
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -295,19 +295,19 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <h1>🎬 Shorts Manager</h1>
     
     <div class="video-selector">
-        <label>📺 Selecciona un video:</label>
+        <label>📺 Select a video:</label>
         <select id="video-select" onchange="selectVideo()">
-            <option value="">-- Selecciona un video --</option>
+            <option value="">-- Select a video --</option>
         </select>
     </div>
     
     <div id="content">
         <div class="no-video">
-            👆 Selecciona un video arriba para ver sus shorts
+            👆 Select a video above to see its shorts
         </div>
     </div>
     
-    <!-- Modal para Extended/Long videos -->
+    <!-- Modal for Extended/Long videos -->
     <div id="modal" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -334,7 +334,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 videos.forEach(v => {
                     const opt = document.createElement('option');
                     opt.value = v.id;
-                    const title = v.title || 'Sin título';
+                    const title = v.title || 'Untitled';
                     opt.textContent = title + ' — ' + v.url;
                     select.appendChild(opt);
                 });
@@ -350,12 +350,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             
             if (!selectedVideoId) {
                 document.getElementById('content').innerHTML = `
-                    <div class="no-video">👆 Selecciona un video arriba para ver sus shorts</div>
+                    <div class="no-video">👆 Select a video above to see its shorts</div>
                 `;
                 return;
             }
             
-            // Obtener URL y carpeta del video seleccionado
+            // Get URL and folder of selected video
             const selectedVideo = videos.find(v => v.id == selectedVideoId);
             selectedVideoUrl = selectedVideo ? selectedVideo.url : '';
             selectedClipsFolder = selectedVideo ? (selectedVideo.clips_folder || '') : '';
@@ -377,7 +377,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 `<button onclick="openFolder()" 
                     style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); 
                            color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; margin-left: 10px;">
-                    📁 Abrir carpeta de clips
+                    📁 Open clips folder
                 </button>` : '';
             
             let html = `
@@ -385,26 +385,26 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     <a href="${selectedVideoUrl}" target="_blank" 
                        style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #ff0000, #cc0000); 
                               color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
-                        ▶️ Ver video en YouTube
+                        ▶️ Watch video on YouTube
                     </a>
                     ${folderButton}
                 </div>
                 <div class="stats">
-                    <div class="stat-card pending"><h3>${pending}</h3><p>Pendientes</p></div>
-                    <div class="stat-card approved"><h3>${approved}</h3><p>Aprobados</p></div>
-                    <div class="stat-card rejected"><h3>${rejected}</h3><p>Rechazados</p></div>
+                    <div class="stat-card pending"><h3>${pending}</h3><p>Pending</p></div>
+                    <div class="stat-card approved"><h3>${approved}</h3><p>Approved</p></div>
+                    <div class="stat-card rejected"><h3>${rejected}</h3><p>Rejected</p></div>
                 </div>
                 <div class="shorts-grid">
             `;
             
             if (shorts.length === 0) {
-                html += `<div class="no-video">No hay shorts para este video</div>`;
+                html += `<div class="no-video">No shorts for this video</div>`;
             } else {
                 shorts.forEach((s, idx) => {
                     const status = s.status || 'pending';
                     html += `
                         <div class="short-card ${status}">
-                            <div class="short-title">${s.title || 'Sin título'}</div>
+                            <div class="short-title">${s.title || 'Untitled'}</div>
                             <div class="short-meta">
                                 <span>⏱ ${s.start_time} → ${s.end_time}</span>
                             </div>
@@ -423,9 +423,9 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                             
                             <div class="actions">
                                 <button class="btn btn-approve" onclick="setStatus(${s.id}, 'approved')" 
-                                    ${status === 'approved' ? 'disabled' : ''}>✓ Aprobar</button>
+                                    ${status === 'approved' ? 'disabled' : ''}>✓ Approve</button>
                                 <button class="btn btn-reject" onclick="setStatus(${s.id}, 'rejected')"
-                                    ${status === 'rejected' ? 'disabled' : ''}>✗ Rechazar</button>
+                                    ${status === 'rejected' ? 'disabled' : ''}>✗ Reject</button>
                             </div>
                         </div>
                     `;
@@ -442,7 +442,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({status})
             });
-            selectVideo(); // Recargar
+            selectVideo(); // Reload
         }
         
         async function openFolder() {
@@ -499,7 +499,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const body = document.getElementById('modal-body');
             
             if (videos.length === 0) {
-                body.innerHTML = '<div class="no-videos">No hay videos de este tipo. Ejecuta:<br><code style="background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 4px; margin-top: 10px; display: inline-block;">' + (type === 'extended' ? 'python generate_extended.py' : 'python generate_long.py') + '</code></div>';
+                body.innerHTML = '<div class="no-videos">No videos of this type. Run:<br><code style="background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 4px; margin-top: 10px; display: inline-block;">' + (type === 'extended' ? 'python generate_extended.py' : 'python generate_long.py') + '</code></div>';
             } else {
                 body.innerHTML = videos.map(v => {
                     const status = v.status || 'pending';
@@ -509,26 +509,26 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     
                     return `
                     <div class="video-item ${type}" id="video-${type}-${v.id}">
-                        <h4>${v.title || 'Sin título'}</h4>
+                        <h4>${v.title || 'Untitled'}</h4>
                         ${videoPath ? `
                         <video width="100%" style="max-height: 300px; border-radius: 8px; margin: 10px 0;" controls>
                             <source src="/video/${encodedPath}" type="video/mp4">
-                            Tu navegador no soporta video HTML5
+                            Your browser does not support HTML5 video
                         </video>
                         ` : ''}
-                        <p><strong>Archivo:</strong> ${videoPath || 'N/A'}</p>
-                        <p><strong>Duración:</strong> ${v.duration_seconds ? Math.floor(v.duration_seconds/60) + ' min' : 'N/A'}</p>
+                        <p><strong>File:</strong> ${videoPath || 'N/A'}</p>
+                        <p><strong>Duration:</strong> ${v.duration_seconds ? Math.floor(v.duration_seconds/60) + ' min' : 'N/A'}</p>
                         <div class="status-badge ${status}" style="display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; margin-bottom: 10px; background: ${status === 'approved' ? '#4ade80' : status === 'rejected' ? '#f87171' : '#fbbf24'}; color: #000;">${status.toUpperCase()}</div>
                         ${v.summary ? '<p>' + v.summary + '</p>' : ''}
                         <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
                             <button onclick="setVideoStatus('${type}', ${v.id}, 'approved')" 
                                 style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #4ade80, #22c55e); color: #000; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" 
-                                ${status === 'approved' ? 'disabled style="opacity:0.5"' : ''}>✓ Aprobar</button>
+                                ${status === 'approved' ? 'disabled style="opacity:0.5"' : ''}>✓ Approve</button>
                             <button onclick="setVideoStatus('${type}', ${v.id}, 'rejected')" 
                                 style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #f87171, #ef4444); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;" 
-                                ${status === 'rejected' ? 'disabled style="opacity:0.5"' : ''}>✗ Rechazar</button>
+                                ${status === 'rejected' ? 'disabled style="opacity:0.5"' : ''}>✗ Reject</button>
                             ${folderPath ? `<button onclick="openFolder('${folderPath.replace(/\\\\/g, '\\\\\\\\')}')" 
-                                style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📁 Carpeta</button>` : ''}
+                                style="flex: 1; min-width: 100px; padding: 8px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">📁 Folder</button>` : ''}
                         </div>
                     </div>
                 `}).join('');
@@ -553,7 +553,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({status})
             });
-            // Recargar modal
+            // Reload modal
             if (type === 'extended') {
                 showExtendedVideos(currentShortId);
             } else {
@@ -696,14 +696,14 @@ class ShortsHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    # Sincronizar BD con archivos locales al iniciar
-    print("🔄 Sincronizando base de datos con archivos locales...")
+    # Sync DB with local files on startup
+    print("🔄 Syncing database with local files...")
     sync_database_with_files()
-    print("✅ Sincronización completada")
+    print("✅ Sync completed")
     
-    print(f"\n🚀 Servidor iniciado en http://localhost:{PORT}")
-    print("   Abre el navegador para gestionar tus shorts")
-    print("   Ctrl+C para detener")
+    print(f"\n🚀 Server started at http://localhost:{PORT}")
+    print("   Open your browser to manage your shorts")
+    print("   Ctrl+C to stop")
     
     server = HTTPServer(('localhost', PORT), ShortsHandler)
     try:
@@ -711,4 +711,4 @@ if __name__ == '__main__':
         webbrowser.open(f'http://localhost:{PORT}')
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\n👋 Servidor detenido")
+        print("\n👋 Server stopped")

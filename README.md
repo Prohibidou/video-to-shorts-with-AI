@@ -1,73 +1,73 @@
 # 🎬 YouTube Shorts Extractor
 
-Herramienta para extraer automáticamente múltiples clips de videos de YouTube con **subtítulos automáticos** basándose en timestamps específicos.
+Tool to automatically extract multiple clips from YouTube videos with **automatic subtitles** based on specific timestamps.
 
-## ✨ Características
+## ✨ Features
 
-- 📥 Descarga automática de videos de YouTube
-- ✂️ Extracción de múltiples clips por timestamps
-- 📝 **Subtítulos automáticos** con IA (Whisper)
-- 🎨 3 estilos de subtítulos: modern, bold, minimal
-- 📐 Conversión a formato vertical 9:16
-- 💾 Exporta también archivos SRT editables
+- 📥 Automatic YouTube video download
+- ✂️ Multiple clip extraction by timestamps
+- 📝 **Automatic subtitles** with AI (Whisper)
+- 🎨 3 subtitle styles: modern, bold, minimal
+- 📐 Vertical 9:16 format conversion
+- 💾 Also exports editable SRT files
 
-## 📋 Requisitos
+## 📋 Requirements
 
 1. **Python 3.10+**
-2. **FFmpeg** - Debe estar instalado y en el PATH del sistema
-3. Dependencias Python (yt-dlp, faster-whisper)
+2. **FFmpeg** - Must be installed and in system PATH
+3. Python dependencies (yt-dlp, faster-whisper)
 
-### Instalar FFmpeg en Windows
+### Install FFmpeg on Windows
 
 ```powershell
-# Opción 1: Con winget
+# Option 1: With winget
 winget install ffmpeg
 
-# Opción 2: Con chocolatey
+# Option 2: With chocolatey
 choco install ffmpeg
 ```
 
-### Instalar dependencias Python
+### Install Python dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-> **Nota**: La primera vez que ejecutes el script, se descargará el modelo de Whisper (~500MB). Las siguientes ejecuciones serán más rápidas.
+> **Note**: The first time you run the script, the Whisper model (~500MB) will be downloaded. Subsequent runs will be faster.
 
-## 🚀 Uso Rápido
+## 🚀 Quick Start
 
-### Opción 1: Editar el script directamente
+### Option 1: Edit the script directly
 
-1. Abre `shorts_extractor.py`
-2. Modifica la sección de configuración:
+1. Open `shorts_extractor.py`
+2. Modify the configuration section:
 
 ```python
-VIDEO_URL = "https://www.youtube.com/watch?v=TU_VIDEO"
+VIDEO_URL = "https://www.youtube.com/watch?v=YOUR_VIDEO"
 
 SEGMENTS = [
-    Segment("11:29", "11:43", "Nombre del clip 1"),
-    Segment("12:59", "13:33", "Nombre del clip 2"),
+    Segment("11:29", "11:43", "Clip 1 name"),
+    Segment("12:59", "13:33", "Clip 2 name"),
 ]
 
-# Configuración de subtítulos
-ADD_SUBTITLES = True           # Activar subtítulos automáticos
-SUBTITLE_STYLE = "modern"      # Estilos: modern, bold, minimal
-LANGUAGE = "es"                # Idioma del video
+# Subtitle configuration
+ADD_SUBTITLES = True           # Enable automatic subtitles
+SUBTITLE_STYLE = "modern"      # Styles: modern, bold, minimal
+LANGUAGE = "es"                # Video language
 ```
 
-3. Ejecuta:
+3. Run:
 ```bash
 python shorts_extractor.py
 ```
 
-### Opción 2: Usar archivo JSON
+### Option 2: Use JSON file
 
-1. Crea un archivo JSON:
+1. Create a JSON file:
 
 ```json
 {
-    "video_url": "https://www.youtube.com/watch?v=TU_VIDEO",
+    "video_url": "https://www.youtube.com/watch?v=YOUR_VIDEO",
     "segments": [
         {"start": "11:29", "end": "11:43", "name": "Clip 1"},
         {"start": "12:59", "end": "13:33", "name": "Clip 2"}
@@ -75,115 +75,115 @@ python shorts_extractor.py
 }
 ```
 
-2. Ejecuta:
+2. Run:
 ```bash
-python batch_extractor.py mi_video.json
+python batch_extractor.py my_video.json
 ```
 
-## ⚙️ Opciones del Batch Extractor
+## ⚙️ Batch Extractor Options
 
-| Opción | Descripción |
+| Option | Description |
 |--------|-------------|
-| `--vertical` | Convierte a formato 9:16 para Shorts/TikTok/Reels |
-| `--no-subtitles` | Desactiva subtítulos automáticos |
-| `--style ESTILO` | Estilo de subtítulos: `modern`, `bold`, `minimal` |
-| `--lang IDIOMA` | Idioma para transcripción (default: `es`) |
-| `--fast` | Modo rápido (sin subtítulos, corte instantáneo) |
-| `--output RUTA` | Directorio de salida |
-| `--no-keep-source` | Elimina el video fuente después de extraer |
+| `--vertical` | Convert to 9:16 format for Shorts/TikTok/Reels |
+| `--no-subtitles` | Disable automatic subtitles |
+| `--style STYLE` | Subtitle style: `modern`, `bold`, `minimal` |
+| `--lang LANGUAGE` | Language for transcription (default: `es`) |
+| `--fast` | Fast mode (no subtitles, instant cut) |
+| `--output PATH` | Output directory |
+| `--no-keep-source` | Delete source video after extraction |
 
-### Ejemplos
+### Examples
 
 ```bash
-# Con subtítulos (default)
+# With subtitles (default)
 python batch_extractor.py segments.json
 
-# Subtítulos estilo bold + formato vertical
+# Bold style subtitles + vertical format
 python batch_extractor.py segments.json --vertical --style bold
 
-# Sin subtítulos, modo rápido
+# No subtitles, fast mode
 python batch_extractor.py segments.json --fast
 
-# Video en inglés
+# English video
 python batch_extractor.py segments.json --lang en
 ```
 
-## 📁 Estructura de Salida
+## 📁 Output Structure
 
 ```
 output/
-├── source_video.mp4           # Video original
+├── source_video.mp4           # Original video
 └── clips/
-    ├── clip_01_nombre.mp4     # Video con subtítulos quemados
-    ├── clip_01_nombre.srt     # Subtítulos editables
-    ├── clip_02_nombre.mp4
-    ├── clip_02_nombre.srt
+    ├── clip_01_name.mp4       # Video with burned-in subtitles
+    ├── clip_01_name.srt       # Editable subtitles
+    ├── clip_02_name.mp4
+    ├── clip_02_name.srt
     └── ...
 ```
 
-## 🎨 Estilos de Subtítulos
+## 🎨 Subtitle Styles
 
-| Estilo | Descripción |
-|--------|-------------|
-| `modern` | Arial blanco con borde negro, semi-transparente. Ideal para la mayoría de videos. |
-| `bold` | Impact grande con borde grueso. Estilo "influencer". |
-| `minimal` | Helvetica delgada con sombra sutil. Elegante y discreto. |
+| Style | Description |
+|-------|-------------|
+| `modern` | White Arial with black border, semi-transparent. Ideal for most videos. |
+| `bold` | Large Impact with thick border. "Influencer" style. |
+| `minimal` | Thin Helvetica with subtle shadow. Elegant and discreet. |
 
-## 🧠 Análisis con IA para encontrar Timestamps
+## 🧠 AI Analysis to Find Timestamps
 
-Si no sabes qué partes del video cortar, puedes usar la IA para analizar el script y encontrar los momentos más impactantes.
+If you don't know which parts of the video to cut, you can use AI to analyze the script and find the most impactful moments.
 
-### Paso 1: Descargar los subtítulos del video
+### Step 1: Download video subtitles
 
 ```bash
 python get_subs.py
 ```
 
-Esto descarga los subtítulos automáticos de YouTube en formato VTT a la carpeta `temp_analysis_output/`.
+This downloads YouTube's automatic subtitles in VTT format to the `temp_analysis_output/` folder.
 
-### Paso 2: Analizar el script con palabras clave
+### Step 2: Analyze the script with keywords
 
-Edita `analyze_vtt.py` y modifica la lista de `keywords` según lo que busques. Por ejemplo, para apologética católica:
+Edit `analyze_vtt.py` and modify the `keywords` list according to what you're looking for. For example, for Catholic apologetics:
 
 ```python
 keywords = [
-    "eucaristía", "altar", "obispo", "herejía", 
-    "protestante", "Lutero", "biblia", "autoridad"
+    "eucharist", "altar", "bishop", "heresy", 
+    "protestant", "Luther", "bible", "authority"
 ]
 ```
 
-Luego ejecuta:
+Then run:
 
 ```bash
 python analyze_vtt.py
 ```
 
-Esto genera `analysis_results.txt` con los fragmentos donde aparecen esas palabras y sus timestamps.
+This generates `analysis_results.txt` with the fragments where those words appear and their timestamps.
 
-### Paso 3: Usar una IA para razonar
+### Step 3: Use an AI to reason
 
-Pasa el contenido de `analysis_results.txt` a una IA (como Gemini o Claude) junto con un prompt como este:
+Pass the contents of `analysis_results.txt` to an AI (like Gemini or Claude) along with a prompt like this:
 
-> "Analiza estos fragmentos y dime cuáles serían los más impactantes para crear Shorts de YouTube que llamen la atención en los primeros 2 segundos. Dame los timestamps de inicio y fin."
+> "Analyze these fragments and tell me which would be the most impactful for creating YouTube Shorts that capture attention in the first 2 seconds. Give me the start and end timestamps."
 
-La IA filtrará el contenido informativo y te dará los momentos de mayor "fricción" o impacto emocional.
+The AI will filter the informative content and give you the moments of greatest "friction" or emotional impact.
 
-### Paso 4: Crear el JSON y extraer
+### Step 4: Create the JSON and extract
 
-Con los timestamps que te dio la IA, crea tu archivo JSON y ejecuta:
+With the timestamps the AI gave you, create your JSON file and run:
 
 ```bash
-python batch_extractor.py mi_analisis.json --vertical --style bold
+python batch_extractor.py my_analysis.json --vertical --style bold
 ```
 
-> 📄 Ver `PROMPT_EXPLANATION.txt` para un ejemplo detallado de cómo razona la IA al seleccionar clips.
+> 📄 See `PROMPT_EXPLANATION.txt` for a detailed example of how the AI reasons when selecting clips.
 
 ## 💡 Tips
 
-1. **Primeras pruebas**: Usa `--fast` para verificar que los timestamps son correctos antes de generar subtítulos.
+1. **First tests**: Use `--fast` to verify that the timestamps are correct before generating subtitles.
 
-2. **Editar subtítulos**: Los archivos `.srt` generados son editables. Puedes corregir errores y luego quemar manualmente con FFmpeg.
+2. **Edit subtitles**: The generated `.srt` files are editable. You can correct errors and then manually burn them with FFmpeg.
 
-3. **Mejor precisión**: Para mejor calidad de transcripción, edita `shorts_extractor.py` y cambia el modelo de `"small"` a `"medium"` o `"large-v2"` (requiere más RAM/tiempo).
+3. **Better precision**: For better transcription quality, edit `shorts_extractor.py` and change the model from `"small"` to `"medium"` or `"large-v2"` (requires more RAM/time).
 
-4. **Múltiples videos**: Crea un archivo JSON por cada video/serie para poder reprocesar fácilmente.
+4. **Multiple videos**: Create a JSON file for each video/series to easily reprocess.

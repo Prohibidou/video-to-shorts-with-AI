@@ -1,10 +1,10 @@
 """
 Batch Shorts Extractor
 ======================
-Lee segmentos desde un archivo JSON y extrae todos los clips
-con subtítulos automáticos.
+Reads segments from a JSON file and extracts all clips
+with automatic subtitles.
 
-Uso:
+Usage:
     python batch_extractor.py segments.json
     python batch_extractor.py segments.json --vertical --subtitles
     python batch_extractor.py segments.json --style bold
@@ -18,14 +18,14 @@ from shorts_extractor import Segment, process_video
 
 
 def load_segments_from_json(json_path: Path) -> tuple[str, list[Segment]]:
-    """Carga la configuración de segmentos desde un archivo JSON."""
+    """Loads segment configuration from a JSON file."""
     
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
     
     url = data.get("video_url")
     if not url:
-        raise ValueError("El archivo JSON debe tener 'video_url'")
+        raise ValueError("JSON file must have 'video_url'")
     
     segments = []
     for seg in data.get("segments", []):
@@ -40,71 +40,71 @@ def load_segments_from_json(json_path: Path) -> tuple[str, list[Segment]]:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Extrae múltiples shorts de YouTube desde un archivo JSON"
+        description="Extract multiple YouTube shorts from a JSON file"
     )
     parser.add_argument(
         "json_file",
         type=Path,
-        help="Archivo JSON con la URL y los segmentos"
+        help="JSON file with URL and segments"
     )
     parser.add_argument(
         "--vertical",
         action="store_true",
-        help="Convertir a formato vertical 9:16 para Shorts"
+        help="Convert to vertical 9:16 format for Shorts"
     )
     parser.add_argument(
         "--fast",
         action="store_true",
-        help="Modo rápido (sin subtítulos, corte instantáneo)"
+        help="Fast mode (no subtitles, instant cut)"
     )
     parser.add_argument(
         "--no-subtitles",
         action="store_true",
-        help="Desactivar subtítulos automáticos"
+        help="Disable automatic subtitles"
     )
     parser.add_argument(
         "--style",
         type=str,
         default="modern",
         choices=["modern", "bold", "minimal"],
-        help="Estilo de subtítulos (default: modern)"
+        help="Subtitle style (default: modern)"
     )
     parser.add_argument(
         "--lang",
         type=str,
         default="es",
-        help="Idioma del video para transcripción (default: es)"
+        help="Video language for transcription (default: es)"
     )
     parser.add_argument(
         "--output", "-o",
         type=Path,
         default=None,
-        help="Directorio de salida (default: ./output)"
+        help="Output directory (default: ./output)"
     )
     parser.add_argument(
         "--no-keep-source",
         action="store_true",
-        help="Eliminar el video fuente después de extraer los clips"
+        help="Delete source video after extracting clips"
     )
     
     args = parser.parse_args()
     
     if not args.json_file.exists():
-        print(f"❌ No se encontró el archivo: {args.json_file}")
+        print(f"❌ File not found: {args.json_file}")
         sys.exit(1)
     
-    # Cargar configuración
+    # Load configuration
     url, segments = load_segments_from_json(args.json_file)
     
-    print(f"📄 Cargados {len(segments)} segmentos desde {args.json_file.name}")
+    print(f"📄 Loaded {len(segments)} segments from {args.json_file.name}")
     
-    # Determinar directorio de salida
+    # Determine output directory
     output_dir = args.output or Path("./output")
     
-    # Determinar si agregar subtítulos
+    # Determine if adding subtitles
     add_subtitles = not args.no_subtitles and not args.fast
     
-    # Procesar
+    # Process
     process_video(
         url=url,
         segments=segments,

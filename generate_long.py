@@ -37,8 +37,8 @@ def add_minutes_to_time(time_str: str, minutes: int) -> str:
 
 def extract_hook_from_script(script: str, max_words: int = 15) -> str:
     """
-    Extrae el texto del gancho del script del short.
-    El gancho son aproximadamente las primeras 15 palabras (~4 segundos de habla).
+    Extracts the hook text from the short's script.
+    The hook is approximately the first 15 words (~4 seconds of speech).
     """
     if not script:
         return None
@@ -62,7 +62,7 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
     # Long = start_time + 10 minutes
     long_end = add_minutes_to_time(start_time, 10)
     
-    print(f"\n📹 Generando Long para: {title}")
+    print(f"\n📹 Generating Long for: {title}")
     print(f"   Start: {start_time} → End: {long_end} (10 min)")
     
     # Create output directory
@@ -79,15 +79,15 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
         hook_text = extract_hook_from_script(script)
         
     if hook_text:
-        print(f"   🎣 Usando gancho del short original: \"{hook_text[:50]}...\"")
+        print(f"   🎣 Using hook from original short: \"{hook_text[:50]}...\"")
     
-    # Create segment con el mismo hook_text que el short original
+    # Create segment with the same hook_text as the original short
     segment = Segment(
         start=start_time,
         end=long_end,
         name=f"{title}_LONG",
         hook_duration=4.0,
-        hook_text=hook_text  # Usar el mismo gancho que el short original
+        hook_text=hook_text  # Use the same hook as the original short
     )
     
     # Extract clip with subtitles (vertical format)
@@ -100,7 +100,7 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
         add_subtitles=True,
         subtitle_style="modern",
         language="es",
-        add_hook=True  # Usar gancho del short original
+        add_hook=True  # Use hook from original short
     )
     
     # Calculate duration
@@ -112,27 +112,27 @@ def generate_long_for_short(short: dict, source_video: Path, output_base: Path) 
     long_id = save_long_video(
         short_id=short_id,
         title=f"{title} - Long",
-        summary=f"Versión extendida (10 min) del short '{title}'",
+        summary=f"Extended version (10 min) of short '{title}'",
         script=script,
         duration_seconds=duration,
         output_filename=str(output_file)
     )
     
-    print(f"   ✅ Long guardado: {output_file}")
-    print(f"   📊 ID en BD: {long_id}")
+    print(f"   ✅ Long saved: {output_file}")
+    print(f"   📊 DB ID: {long_id}")
     
     return output_file
 
 
 def main():
     print("=" * 60)
-    print("🎬 GENERADOR DE VIDEOS LONG (10 min)")
+    print("🎬 LONG VIDEO GENERATOR (10 min)")
     print("=" * 60)
     
     videos = get_all_videos()
     
     if not videos:
-        print("❌ No hay videos en la base de datos")
+        print("❌ No videos in database")
         return
     
     for video in videos:
@@ -140,15 +140,15 @@ def main():
         video_title = video.get('title', 'Video')
         clips_folder = video.get('clips_folder', '')
         
-        print(f"\n📺 Procesando video: {video_title}")
+        print(f"\n📺 Processing video: {video_title}")
         
         shorts = get_shorts_by_video(video_id)
         
         if not shorts:
-            print("   ⚠️ No hay shorts para este video")
+            print("   ⚠️ No shorts for this video")
             continue
         
-        print(f"   📊 Shorts encontrados: {len(shorts)}")
+        print(f"   📊 Shorts found: {len(shorts)}")
         
         # Find source video
         source_video = Path("output/source_video.mp4")
@@ -158,10 +158,10 @@ def main():
                 source_video = possible_source
         
         if not source_video.exists():
-            print(f"   ⚠️ No se encontró el video fuente en: {source_video}")
+            print(f"   ⚠️ Source video not found at: {source_video}")
             continue
         
-        print(f"   📂 Video fuente: {source_video}")
+        print(f"   📂 Source video: {source_video}")
         
         output_base = Path(clips_folder) if clips_folder else Path("output/clips")
         
@@ -170,10 +170,10 @@ def main():
             try:
                 generate_long_for_short(short, source_video, output_base)
             except Exception as e:
-                print(f"   ❌ Error generando Long para {short['title']}: {e}")
+                print(f"   ❌ Error generating Long for {short['title']}: {e}")
     
     print("\n" + "=" * 60)
-    print("✅ GENERACIÓN DE LONG VIDEOS COMPLETADA")
+    print("✅ LONG VIDEO GENERATION COMPLETED")
     print("=" * 60)
 
 

@@ -83,7 +83,7 @@ def init_db():
         )
     ''')
     
-    # Migrar tabla existente si faltan columnas
+    # Migrate existing table if columns are missing
     try:
         cursor.execute("ALTER TABLE shorts ADD COLUMN selection_reason TEXT")
     except sqlite3.OperationalError:
@@ -107,7 +107,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print(f"✅ Base de datos inicializada en: {DATABASE_PATH}")
+    print(f"✅ Database initialized at: {DATABASE_PATH}")
 
 
 def save_video(url: str, title: str = None, transcript: str = None, clips_folder: str = None) -> int:
@@ -166,19 +166,19 @@ def save_short(
     Save a short to the database.
     
     Args:
-        video_id: ID del video fuente
-        title: Nombre del clip
-        summary: Resumen breve
-        script: Transcripción REAL del audio del short
-        start_time: Timestamp inicio (MM:SS)
-        end_time: Timestamp fin (MM:SS)
-        output_filename: Archivo .mp4
-        selection_reason: Explicación detallada de por qué fue seleccionado este clip
-                          (incluye justificación teológica, impacto apologético, citas clave, etc.)
-        folder_path: Carpeta donde está guardado el short
-        hook_text: Texto del gancho visual (si existe)
+        video_id: Source video ID
+        title: Clip name
+        summary: Brief summary
+        script: ACTUAL audio transcription of the short
+        start_time: Start timestamp (MM:SS)
+        end_time: End timestamp (MM:SS)
+        output_filename: .mp4 file
+        selection_reason: Detailed explanation of why this clip was selected
+                          (includes theological justification, apologetic impact, key quotes, etc.)
+        folder_path: Folder where the short is saved
+        hook_text: Visual hook text (if exists)
     
-    Returns: ID del short
+    Returns: Short ID
     """
     conn = get_connection()
     cursor = conn.cursor()

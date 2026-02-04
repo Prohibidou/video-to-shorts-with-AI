@@ -1,35 +1,34 @@
 USER PROMPT:
-"necesito que en este video [URL], analices su script, y me des desde qué minuto a qué minuto, hay material para hacer shorts para youtube que convierta a evangelicos/protestantes en catolicos, con shorts que sean muy impactantes, llamativos e incómodos para un evangelico/protestante y que llamen la atención en los primeros 2 segundos de video a evangelicos que lo miren
+"I need you to analyze the script of this video [URL], and tell me from which minute to which minute there is material to make YouTube shorts that convert evangelicals/protestants to Catholics, with shorts that are very impactful, eye-catching and uncomfortable for an evangelical/protestant and that capture attention in the first 2 seconds for evangelicals watching them
 
-
-Usa la aplicación (no toques nada del código de la app) para producir Shorts de este video [URL]
+Use the application (don't touch any of the app code) to produce Shorts from this video [URL]
 "
 
 ---
 
-CÓMO ESTE PROMPT AYUDA A RAZONAR Y OBTENER BUENOS SHORTS (ANÁLISIS DE LA IA):
+HOW THIS PROMPT HELPS TO REASON AND GET GOOD SHORTS (AI ANALYSIS):
 
-Este prompt es extremadamente efectivo porque no pide un resumen genérico del video, sino que establece un "filtro de intención agresiva" (en el sentido retórico/teológico). Esto permite a la IA descartar el 95% del contenido informativo y centrarse únicamente en la "fricción".
+This prompt is extremely effective because it doesn't ask for a generic summary of the video, but establishes an "aggressive intention filter" (in the rhetorical/theological sense). This allows the AI to discard 95% of informative content and focus only on "friction".
 
-Proceso de Razonamiento desencadenado por el prompt:
+Reasoning Process triggered by the prompt:
 
-1.  **Definición del Target (La Víctima Intelectual):**
-    *   Target: Evangélico/Protestante convencido.
-    *   Psicología: Cree que la Iglesia Católica es apóstata, idólatra y corrompida.
-    *   Estrategia derivada: No usar argumentos defensivos ("no adoramos imágenes"), sino contraataques que cuestionen SU propia base ("tu pastor no tiene autoridad").
+1.  **Target Definition (The Intellectual Victim):**
+    *   Target: Convinced Evangelical/Protestant.
+    *   Psychology: Believes that the Catholic Church is apostate, idolatrous and corrupt.
+    *   Derived strategy: Don't use defensive arguments ("we don't worship images"), but counterattacks that question THEIR own base ("your pastor has no authority").
 
-2.  **El Criterio de "Incomodidad" (Disonancia Cognitiva):**
-    *   El prompt pide que sea "incómodo". Esto descarta enseñanzas suaves sobre el amor o la paz.
-    *   La IA busca palabras clave de conflicto: *Herejía, Condenación, Infierno, Lutero, División, Altar*.
-    *   Si un segmento dice "Ignacio amaba a Dios", se descarta. Si dice "Si no estás con Ignacio, tu pan no es de Dios", se selecciona.
+2.  **The "Discomfort" Criterion (Cognitive Dissonance):**
+    *   The prompt asks for it to be "uncomfortable". This discards soft teachings about love or peace.
+    *   The AI looks for conflict keywords: *Heresy, Condemnation, Hell, Luther, Division, Altar*.
+    *   If a segment says "Ignatius loved God", it is discarded. If it says "If you are not with Ignatius, your bread is not from God", it is selected.
 
-3.  **El Gancho de los 2 Segundos (The Hook):**
-    *   El prompt exige atención inmediata. Esto obliga a buscar frases que empiecen con una afirmación radical.
-    *   Ejemplo seleccionado: "Que a los protestantes no les mientan...". Esto detiene el scroll inmediatamente porque el espectador piensa: "¿En qué me mintieron?".
+3.  **The 2-Second Hook (The Hook):**
+    *   The prompt requires immediate attention. This forces searching for phrases that start with a radical statement.
+    *   Example selected: "Don't let protestants lie to you...". This stops the scroll immediately because the viewer thinks: "What did they lie to me about?".
 
-4.  **Inyección de Lógica Teológica Histórica:**
-    *   Al analizar el script (obtenido vía web scraping o subs), la IA cruza el texto con conocimientos de apologética.
-    *   Detecta que San Ignacio de Antioquía (discípulo de Juan) hablando de "Eucaristía" en el año 107 d.C. es una "prueba nuclear" contra la teología simbólica protestante.
+4.  **Injection of Historical Theological Logic:**
+    *   When analyzing the script (obtained via web scraping or subs), the AI cross-references the text with apologetics knowledge.
+    *   Detects that Saint Ignatius of Antioch (disciple of John) speaking of "Eucharist" in 107 AD is a "nuclear proof" against symbolic Protestant theology.
 
-Resultado:
-Gracias a este prompt específico, la IA funciona no como un "resumidor", sino como un "editor de video apologético", seleccionando clips quirúrgicamente diseñados para generar debate, comentarios y retención, que es lo que viraliza un Short.
+Result:
+Thanks to this specific prompt, the AI works not as a "summarizer", but as an "apologetic video editor", selecting clips surgically designed to generate debate, comments and retention, which is what viralize a Short.
