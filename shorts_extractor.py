@@ -31,6 +31,76 @@ except ImportError:
     DB_AVAILABLE = False
 
 
+# =============================================================================
+# HOOK SELECTION CONSTANTS - Estrategia para capturar atención de evangélicos
+# =============================================================================
+
+# Palabras/frases que causan disonancia cognitiva en evangélicos/protestantes
+# Ordenadas por impacto (las más disruptivas primero)
+DISRUPTIVE_KEYWORDS = [
+    # Contraataques directos (máximo impacto)
+    "mentira", "mentiras", "engañado", "engaño", "falso", "error", "no es bíblico",
+    "no es biblico", "anti-bíblico", "anti-biblico", "herejía", "herejia", "hereje",
+    
+    # Desafíos a autoridad protestante
+    "lutero", "calvino", "reforma", "reformadores", "500 años", "1500",
+    "inventaron", "inventó", "invento", "secta", "sectas", "división", "division",
+    "dividido", "miles de denominaciones",
+    
+    # Autoridad histórica católica
+    "padres de la iglesia", "padres apostólicos", "padres apostolicos", "primitivos",
+    "primeros cristianos", "iglesia primitiva", "apóstoles", "apostoles", "discípulo de",
+    "discipulo de", "año 100", "año 107", "siglo I", "siglo II", "ignacio", "policarpo",
+    "clemente", "ireneo", "atanasio", "agustín", "agustin", "jerónimo", "jeronimo",
+    
+    # Sacramentos (ataque a sola scriptura)
+    "eucaristía", "eucaristia", "cuerpo de cristo", "presencia real", "sangre de cristo",
+    "transubstanciación", "transubstanciacion", "altar", "sacrificio", "misa",
+    "confesión", "confesion", "sacerdote", "obispo", "sucesión apostólica",
+    "sucesion apostolica",
+    
+    # María y Santos (puntos de fricción)
+    "maría", "maria", "virgen", "madre de dios", "theotokos", "santos", "intercesión",
+    "intercesion", "veneración", "veneracion",
+    
+    # Iglesia y Autoridad
+    "católica", "catolica", "católico", "catolico", "una sola iglesia", "única iglesia",
+    "unica iglesia", "fuera de la iglesia", "pedro", "roma", "papa", "papado",
+    "tradición", "tradicion", "magisterio",
+    
+    # Frases de impacto
+    "protestantes no saben", "evangélicos ignoran", "evangelicos ignoran",
+    "la biblia dice", "pablo dice", "jesús dijo", "jesus dijo",
+]
+
+# Palabras de relleno que NO deben iniciar ni terminar un gancho
+FILLER_WORDS_START = [
+    "y", "e", "o", "u", "pero", "entonces", "pues", "bueno", "bien",
+    "eh", "este", "esto", "eso", "ah", "oh", "mm", "mira", "oye",
+    "digamos", "como", "así", "asi", "o sea", "osea", "porque",
+    "también", "tambien", "además", "ademas", "sin embargo",
+    "no obstante", "por lo tanto", "es decir", "en realidad",
+    "de hecho", "la verdad", "verdad", "claro", "obviamente",
+]
+
+FILLER_WORDS_END = [
+    "y", "e", "o", "u", "que", "de", "en", "a", "el", "la", "los", "las",
+    "un", "una", "unos", "unas", "al", "del", "con", "para", "por",
+    "como", "así", "asi", "muy", "más", "mas", "menos", "tan",
+    "este", "esta", "estos", "estas", "ese", "esa", "esos", "esas",
+    "su", "sus", "mi", "mis", "tu", "tus", "nuestro", "nuestra",
+    "obispos", "sacerdotes", "diaconos",  # Contexto específico: suelen ser parte de listas
+]
+
+# Palabras que indican un inicio FUERTE (bonus de puntaje)
+STRONG_SUBJECTS = [
+    "la iglesia", "el apostol", "los apostoles", "maria", "maría", "jesus", "jesús",
+    "cristo", "el señor", "san", "santa", "dios", "padre", "hijo", "espiritu",
+    "pablo", "juan", "pedro", "ignacio", "timoteo", "onesimo", "onésimo",
+    "nadie", "todo", "todos", "ninguno", "jamas", "nunca", "siempre",
+    "lutero", "calvino", "la biblia", "las escrituras",
+]
+
 @dataclass
 class Segment:
     """Represents a video segment to extract."""
@@ -197,24 +267,290 @@ def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line:
     return result
 
 
-def extract_hook_text(transcription: list[dict], hook_duration: float) -> tuple[str, float]:
+# Lista de nombres propios comunes en apologética que necesitan comas
+PROPER_NAMES = [
+    "maria", "maría", "pablo", "pedro", "juan", "santiago", "mateo", "marcos", "lucas",
+    "ignacio", "policarpo", "clemente", "ireneo", "atanasio", "agustin", "agustín",
+    "jeronimo", "jerónimo", "ambrosio", "crisostomo", "crisóstomo", "basilio",
+    "gregorio", "cipriano", "tertuliano", "origenes", "orígenes", "justino",
+    "lutero", "calvino", "zuinglio", "wesley", "knox",
+]
+
+
+def format_hook_with_commas(text: str) -> str:
     """
-    Extracts the text from the first seconds to use as a hook.
-    Returns (hook_text, hook_end_time).
-    The end time is the end of the last segment included in the hook.
+    Agrega comas entre nombres propios consecutivos para mejor legibilidad.
+    Ejemplo: "Maria Pablo Juan" -> "Maria, Pablo, Juan"
     """
-    hook_words = []
-    hook_end_time = hook_duration
+    if not text:
+        return text
     
-    for seg in transcription:
-        # Include segments that start before hook_duration
-        if seg["start"] < hook_duration:
-            hook_words.append(seg["text"])
-            hook_end_time = max(hook_end_time, seg["end"])
+    words = text.split()
+    if len(words) < 2:
+        return text
+    
+    result = []
+    i = 0
+    while i < len(words):
+        word = words[i]
+        word_clean = word.lower().rstrip(".,;:!?")
+        
+        # Si es un nombre propio
+        if word_clean in PROPER_NAMES:
+            result.append(word.rstrip(","))  # Quitar coma existente si hay
+            
+            # Verificar si la siguiente palabra también es nombre propio
+            if i + 1 < len(words):
+                next_word_clean = words[i + 1].lower().rstrip(".,;:!?")
+                if next_word_clean in PROPER_NAMES:
+                    # Agregar coma después del nombre actual
+                    result[-1] = result[-1] + ","
+        else:
+            result.append(word)
+        
+        i += 1
+    
+    return " ".join(result)
+
+
+def clean_hook_text(text: str) -> str:
+    """
+    Limpia el texto del gancho eliminando palabras de relleno del inicio y final.
+    Asegura que el gancho termine correctamente (sin palabras sueltas).
+    Agrega comas entre nombres propios para mejor legibilidad.
+    También elimina palabras PARCIALES (muy cortas) que indican que se cortó a mitad.
+    """
+    if not text:
+        return ""
+    
+    words = text.split()
+    if not words:
+        return ""
+    
+    # Eliminar palabras de relleno del inicio
+    while words and words[0].lower().rstrip(".,;:!?") in FILLER_WORDS_START:
+        words.pop(0)
+    
+    # Eliminar palabras de relleno del final (oraciones que quedan abiertas)
+    while words and words[-1].lower().rstrip(".,;:!?") in FILLER_WORDS_END:
+        words.pop()
+    
+    # NUEVO: Eliminar palabras PARCIALES del final (1-2 caracteres que no son palabras válidas)
+    # Esto detecta cortes como "Juan era c" donde "c" es fragmento de "católico"
+    MIN_WORD_LENGTH = 3  # Palabras válidas tienen al menos 3 letras
+    # Excepciones: palabras muy cortas que SÍ son válidas
+    SHORT_VALID_WORDS = ["la", "el", "y", "e", "o", "a", "de", "en", "es", "no", "si", "sí", "un"]
+    while words:
+        last_word_clean = words[-1].lower().rstrip(".,;:!?")
+        if len(last_word_clean) < MIN_WORD_LENGTH and last_word_clean not in SHORT_VALID_WORDS:
+            words.pop()  # Eliminar palabra parcial
         else:
             break
     
-    return " ".join(hook_words), hook_end_time
+    if not words:
+        return ""
+    
+    result = " ".join(words)
+    
+    # Agregar comas entre nombres propios
+    result = format_hook_with_commas(result)
+    
+    # Si termina con carácter incompleto, intentar cerrar elegantemente
+    if result and result[-1] not in ".!?":
+        # Si la última palabra es sustantiva (no es artículo/preposición), agregar puntos suspensivos
+        last_word = words[-1].lower().rstrip(".,;:!?")
+        if last_word not in FILLER_WORDS_END:
+            result = result.rstrip(".,;:") + "..."
+    
+    return result
+
+
+def score_hook_window(text: str) -> int:
+    """
+    Puntúa una ventana de texto según su potencial como gancho disruptivo.
+    Mayor puntaje = más disruptivo y atractivo para evangélicos/protestantes.
+    """
+    if not text:
+        return 0
+    
+    score = 0
+    text_lower = text.lower()
+    
+    # Puntaje por palabras disruptivas (más impacto = más puntos)
+    for i, keyword in enumerate(DISRUPTIVE_KEYWORDS):
+        if keyword in text_lower:
+            # Las primeras keywords son más disruptivas (tienen más peso)
+            weight = max(1, 15 - (i // 5))  # De 15 a 1 según posición
+            score += weight
+    
+    # Bonus si es una oración que parece completa
+    if text.strip().endswith((".", "!", "?", "...")):
+        score += 5
+    
+    # Bonus si NO empieza con palabra de relleno
+    words = text.split()
+    if words and words[0].lower() not in FILLER_WORDS_START:
+        score += 3
+    
+    # Bonus si NO termina con palabra de relleno
+    if words and words[-1].lower().rstrip(".,;:!?") not in FILLER_WORDS_END:
+        score += 3
+    
+    # NUEVA LÓGICA: Penalizar longitud EXCESIVA (usuario reportó que 15+ palabras es demasiado)
+    word_count = len(words)
+    if word_count < 5:
+        score -= 20  # Muy corto, inútil
+    elif word_count > 12:
+        score -= 20  # Demasiado largo - PENALIZACIÓN FUERTE
+    elif 6 <= word_count <= 10:
+        score += 10  # Longitud IDEAL (punch line corto)
+    elif word_count <= 12:
+        score += 5   # Aceptable
+    
+    # NUEVA LÓGICA: Bonus por Sujeto Fuerte al inicio
+    for subject in STRONG_SUBJECTS:
+        if text.lower().startswith(subject):
+            score += 15
+            break
+    
+    # NUEVA LÓGICA: Penalización MASIVA si empieza con "Y" u otros conectores dependientes
+    if words[0].lower() in ["y", "e", "o", "pero", "porque", "pues", "que", "cual"]:
+        score -= 50  # Esto rompe completamente la gramática
+    
+    # NUEVA LÓGICA: Penalizar "Sustantivo + Y" (ej: "Obispos y todos...")
+    # Indica que es continuación de una lista anterior
+    if len(words) > 1 and words[1].lower() == "y":
+        first_word_lower = words[0].lower().rstrip(".,;:!?")
+        # Si la primera palabra NO es un nombre propio conocido, penalizar
+        if first_word_lower not in [name.lower() for name in PROPER_NAMES]:
+            score -= 30  # Penalización fuerte por patrón "Sustantivo + y"
+    
+    # NUEVA LÓGICA: Detectar patrones de LISTA/CONTINUACIÓN INTERNOS
+    # Frases como "Maria, Pablo y todos ellos..." tienen "y todos" que indica continuación
+    text_lower = text.lower()
+    bad_internal_patterns = [
+        " y todos ", " y cada ", " y los demás ", " y las demás ",
+        " y ellos ", " y muchos ", " y otros ", " y otras ",
+        " como obispos ", " como sacerdotes ",  # "X como obispos y todos" es lista
+    ]
+    for pattern in bad_internal_patterns:
+        if pattern in text_lower:
+            score -= 40  # Penalización muy fuerte - esto es continuación de lista
+            break
+    
+    return max(0, score)
+
+
+def find_best_hook_window(transcription: list[dict], hook_duration: float, 
+                          search_window: float = 15.0) -> tuple[str, float, float]:
+    """
+    Busca el MEJOR gancho posible dentro de los primeros segundos del video.
+    NO usa una duración fija - prueba múltiples duraciones y elige la que
+    produzca el gancho más disruptivo para capturar la atención.
+    
+    La duración del gancho se determina por el contenido, no por un tiempo fijo.
+    
+    Returns: (hook_text, hook_start_time, hook_end_time)
+    """
+    if not transcription:
+        return "", 0.0, hook_duration
+    
+    best_score = -1
+    best_text = ""
+    best_start = 0.0
+    best_end = hook_duration
+    
+    # Probar múltiples duraciones de ventana - LIMITADO a máximo 8s
+    # El usuario reportó que ganchos largos son inaceptables
+    DURATIONS_TO_TRY = [4.0, 5.0, 6.0, 7.0, 8.0]  # Eliminados 10s y 12s
+    
+    for try_duration in DURATIONS_TO_TRY:
+        # Para cada duración, probar diferentes puntos de inicio
+        for i, start_seg in enumerate(transcription):
+            # Solo buscar en los primeros search_window segundos
+            if start_seg["start"] >= search_window:
+                break
+            
+            window_start = start_seg["start"]
+            window_words = []
+            window_end = window_start
+            
+            # Acumular palabras hasta la duración objetivo
+            # IMPORTANTE: Aumentamos tolerancia a 2s para evitar cortar palabras a la mitad
+            # Es mejor tener una frase completa que una cortada
+            for seg in transcription[i:]:
+                if seg["start"] < window_start + try_duration + 2.0:  # +2s tolerancia para completar palabras
+                    window_words.append(seg["text"])
+                    window_end = max(window_end, seg["end"])
+                else:
+                    break
+            
+            if not window_words:
+                continue
+            
+            window_text = clean_hook_text(" ".join(window_words))
+            if not window_text:
+                continue
+                
+            window_score = score_hook_window(window_text)
+            
+            # Penalizar ventanas que empiezan tarde (preferimos empezar cerca de 0)
+            # Penalización más suave para permitir encontrar mejor contenido
+            time_penalty = int(window_start)  # 1 punto por segundo de retraso
+            
+            # Pequeño bonus si la duración está en el rango "ideal" (6-10 segundos)
+            if 6.0 <= try_duration <= 10.0:
+                window_score += 2
+            
+            adjusted_score = window_score - time_penalty
+            
+            if adjusted_score > best_score and window_text:
+                best_score = adjusted_score
+                best_text = window_text
+                best_start = window_start
+                best_end = window_end
+    
+    # Si no encontramos nada bueno, usar los primeros segundos disponibles
+    if not best_text and transcription:
+        fallback_words = []
+        fallback_end = 0.0
+        for seg in transcription[:10]:  # Primeros 10 segmentos
+            fallback_words.append(seg["text"])
+            fallback_end = seg["end"]
+        best_text = clean_hook_text(" ".join(fallback_words))
+        best_end = fallback_end
+    
+    return best_text, best_start, best_end
+
+
+def extract_hook_text(transcription: list[dict], hook_duration: float) -> tuple[str, float]:
+    """
+    Extrae el mejor texto de gancho del video usando búsqueda inteligente.
+    Busca la ventana más disruptiva dentro de los primeros 15 segundos.
+    Returns (hook_text, hook_end_time).
+    
+    El gancho elegido:
+    - Contiene palabras que causan disonancia cognitiva
+    - No tiene palabras de relleno al inicio/final
+    - Es una oración lo más completa posible
+    
+    IMPORTANTE: El hook_end_time es la duración VISUAL del texto en pantalla,
+    NO el tiempo que toma decir las palabras. El texto es estático (no subtítulo
+    en tiempo real), así que debe ser breve (~4-6 segundos para completar oraciones).
+    """
+    hook_text, hook_start, hook_end = find_best_hook_window(transcription, hook_duration)
+    
+    # DURACIÓN VISUAL FLEXIBLE: El texto del gancho es estático. Debe aparecer
+    # aproximadamente 4-6 segundos para no tener tiempos muertos PERO también
+    # para no cortar oraciones a mitad de palabra.
+    # Usamos hasta 6 segundos para permitir completar frases.
+    MAX_VISUAL_DURATION = 6.0
+    MIN_VISUAL_DURATION = 4.0
+    
+    # Usar duración flexible: preferimos 4s pero permitimos hasta 6s
+    visual_duration = max(MIN_VISUAL_DURATION, min(hook_duration, MAX_VISUAL_DURATION))
+    
+    return hook_text, visual_duration
 
 
 
@@ -679,10 +1015,9 @@ if __name__ == "__main__":
     
     # List of segments to extract (apologetic shorts about St. Ignatius and the early Church)
     SEGMENTS = [
-        # The Church was called Catholic since the apostles
-        Segment("10:37", "11:40", "Mary Paul John were Catholics"),
-        # Lying arguments from protestants about the corrupt church
-        Segment("20:18", "21:15", "Protestant Lying Arguments"),
+        # María, Pablo, Juan, Ignacio, Timoteo, Onésimo - todos católicos
+        # El video DEBE empezar en 11:29 donde empieza "María era católica..."
+        Segment("11:29", "12:29", "Maria Pablo Juan Todos Catolicos"),
     ]
     
     # Configuration

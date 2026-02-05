@@ -8,7 +8,7 @@ This workflow extracts apologetic shorts directly from a YouTube URL.
 > [!IMPORTANT]
 > **ALWAYS analyze the provided URL.** DO NOT use the database to search for existing shorts.
 > Generate ONLY: Shorts (~1 min) + Extended (~3 min). **NEVER generate Long (~10 min)** unless explicitly requested.
-
+> Every Shorts (~1 min) have one related Extended (~3 min) video. dont forget to make both
 ---
 
 ## Step by Step Process
@@ -93,7 +93,7 @@ output/
 
 ## Technical Notes
 
-- Whisper model: **small** (never use tiny)
+- Whisper model: **small** (never use tiny. process each video alone in a stack, always, to dont have any trouble with RAM memory, okey ? always avoid having RAM memory, doesnt matter if the process is slow)
 - Format: vertical 9:16
 - Subtitles: hardcoded, bold style
 - Visual hook: first ~4 seconds with fixed text
