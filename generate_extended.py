@@ -43,63 +43,6 @@ def add_minutes_to_time(time_str: str, minutes_to_add: int) -> str:
         return f"{mins}:{secs:02d}"
 
 
-def extract_hook_from_script(script: str, max_words: int = 15) -> str:
-    """
-    Extracts the best hook text from the short's script.
-    Uses intelligent selection to find disruptive phrases that cause cognitive dissonance.
-    """
-    if not script:
-        return None
-    
-    # Import selection functions from shorts_extractor
-    try:
-        from shorts_extractor import (
-            clean_hook_text, score_hook_window, 
-            DISRUPTIVE_KEYWORDS, FILLER_WORDS_START, FILLER_WORDS_END
-        )
-    except ImportError:
-        # Fallback to simple extraction if import fails
-        words = script.split()
-        if len(words) <= max_words:
-            return script.strip()
-        return " ".join(words[:max_words]).strip()
-    
-    words = script.split()
-    if not words:
-        return None
-    
-    # Try different windows within the script and find the most disruptive
-    best_score = -1
-    best_hook = None
-    
-    # Search in windows of max_words words, sliding by 3 words each time
-    for start_idx in range(0, min(len(words), 50), 3):  # Only search first ~50 words
-        end_idx = min(start_idx + max_words, len(words))
-        window_text = " ".join(words[start_idx:end_idx])
-        
-        cleaned = clean_hook_text(window_text)
-        if not cleaned:
-            continue
-            
-        score = score_hook_window(cleaned)
-        
-        # Penalize windows that start later in the script
-        time_penalty = start_idx // 3
-        adjusted_score = score - time_penalty
-        
-        if adjusted_score > best_score:
-            best_score = adjusted_score
-            best_hook = cleaned
-    
-    # If we found a good hook, return it
-    if best_hook and best_score > 0:
-        return best_hook
-    
-    # Fallback: return cleaned first words
-    fallback_text = " ".join(words[:max_words])
-    return clean_hook_text(fallback_text) or fallback_text.strip()
-
-
 
 def generate_extended_for_short(short: dict, video_url: str, source_video: Path, output_base: Path):
     """Generate extended version for a single short."""
@@ -118,7 +61,7 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
     # Priority: Hook stored in DB > Hook extracted from script
     hook_text = short.get('hook_text')
     if not hook_text:
-        hook_text = extract_hook_from_script(script)
+        print("   ℹ️  No specific hook in DB, and heuristic extraction is disabled.")
         
     if hook_text:
         print(f"   🎣 Using hook from original short: \"{hook_text[:50]}...\"")
@@ -238,7 +181,8 @@ def main():
         output_base = Path(clips_folder) if clips_folder else Path("output/extended")
         
         for short in shorts:
-            if short['title'] not in ["Maria Pablo Juan Todos Catolicos"]:
+            # Process ONLY the specific short we just made
+            if short['title'] != "Maria Pablo Juan Todos Catolicos":
                 continue
             try:
                 generate_extended_for_short(short, video_url, source_video, output_base)

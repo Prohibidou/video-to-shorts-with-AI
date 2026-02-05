@@ -26,9 +26,96 @@ Reasoning Process triggered by the prompt:
     *   The prompt requires immediate attention. This forces searching for phrases that start with a radical statement.
     *   Example selected: "Don't let protestants lie to you...". This stops the scroll immediately because the viewer thinks: "What did they lie to me about?".
 
-4.  **Injection of Historical Theological Logic:**
+4.  **HOOK DURATION AND CHARACTERISTICS (Agent Decision):**
+    *   **Duration**: Approximately 4 seconds (minimum 2s, maximum 5s). The Agent decides the final duration based on the content.
+    *   **Impact**: Must be SHOCKING, uncomfortable, a "hard truth to swallow" for evangelicals/protestants.
+    *   **Cognitive Dissonance**: The hook must create immediate intellectual conflict in the viewer's mind.
+    *   **Attention Capture**: Must grab attention in the FIRST 2 SECONDS, extendable to ~4 seconds for complete delivery.
+    
+    **VIDEO PURPOSE (Context for Agent):**
+    These videos are created by a Catholic attempting to evangelize Protestants/Evangelicals. The goal is to:
+    - Make them DOUBT their evangelical/protestant faith
+    - Make them doubt that their Evangelical/Protestant church is the true one
+    - Make them begin to question what they previously believed with such certainty
+    - Help them understand the Catholic perspective and the evidence/proofs/arguments that support it
+    - Convert them to the Catholic faith
+    - Show them that the Evangelical/Protestant church is FALSE
+    
+    **THEOLOGICAL FOUNDATION (Agent Context):**
+    - The ONLY Church of Jesus Christ is the Catholic Apostolic Roman Church
+    - All other Protestant/Evangelical churches are FALSE - they are not the Church founded by Jesus Christ
+    - Protestant/Evangelical denominations are heresies that teach false doctrines
+    - The true Church was founded by Jesus in Matthew 16:18
+    - The Church has ALWAYS been, IS, and WILL ALWAYS BE Catholic Apostolic Roman
+    - The Church is NOT invisible - it is spiritual but VISIBLE in:
+        * Hierarchy and authorities
+        * Doctrine and teaching
+        * Leaders and structure
+        * Name: Catholic Apostolic Roman
+    - All Protestant/Evangelical denominations are FALSE churches that Jesus does NOT want us to believe in or congregate in
+    
+    **Hook Selection Criteria:**
+    - Must be an UNCOMFORTABLE TRUTH for protestants
+    - Must challenge their theological foundation (Sola Scriptura, Sola Fide, etc.)
+    - Must use evidence that makes them DOUBT their faith:
+        * Early Church Fathers (1st-3rd century): Ignatius, Polycarp, Clement, Irenaeus, etc.
+        * Biblical arguments: Scripture that contradicts protestant interpretations
+        * Archaeology: Physical evidence of early Catholic practices
+        * Historical documents: Letters, councils, testimonies from the first centuries
+        * ANY evidence that demonstrates the Catholic position and creates doubt
+    - Must be concise but complete (no cut-off words)
+    - The Agent has FINAL DECISION on hook text and duration
+    
+    **⚠️ CRITICAL - VERBATIM HOOK REQUIREMENT:**
+    - The video MUST begin with the speaker SAYING THE HOOK WORD BY WORD
+    - The hook text displayed on screen MUST MATCH what the speaker is saying verbatim
+    - This is NON-NEGOTIABLE for maximum attention capture
+    - The hook is NOT an overlay - it's the actual spoken words at the start
+    - When selecting a segment, find where the speaker says the impactful phrase
+    - The segment start time = the moment the speaker begins saying the hook
+    - This synchronization makes the short MORE POWERFUL and attention-grabbing
+
+5.  **Injection of Historical Theological Logic:**
     *   When analyzing the script (obtained via web scraping or subs), the AI cross-references the text with apologetics knowledge.
     *   Detects that Saint Ignatius of Antioch (disciple of John) speaking of "Eucharist" in 107 AD is a "nuclear proof" against symbolic Protestant theology.
 
 Result:
 Thanks to this specific prompt, the AI works not as a "summarizer", but as an "apologetic video editor", selecting clips surgically designed to generate debate, comments and retention, which is what viralize a Short.
+
+---
+
+6.  **OUTPUT ORGANIZATION AND DATABASE:**
+
+    **Video Types Generated:**
+    - SHORT (~1 min): Quick, impactful clips for YouTube Shorts/TikTok/Reels
+    - EXTENDED (~3 min): Longer versions with more context, same hook
+    
+    **Folder Structure:**
+    ```
+    output/
+    ├── source_video.mp4                    # Original downloaded video
+    └── clips/
+        └── [Video Title]/
+            └── [XX]_[Short Name]/
+                ├── clip_XX_[Name].mp4      # The SHORT (~1 min)
+                ├── clip_XX_[Name].srt      # Subtitles
+                └── extended/
+                    └── clip_XX_[Name]_EXTENDED.mp4  # Extended version (~3 min)
+    ```
+    
+    **Database Requirements (shorts_tracker.db):**
+    - Store the SOURCE VIDEO URL for each video processed
+    - Register each SHORT created with:
+        * Video reference (URL)
+        * Start/end timestamps
+        * Hook text used
+        * File path
+        * Creation date
+    - Register EXTENDED versions linked to their parent SHORT
+    - Track APPROVAL STATUS from the Web UI
+    
+    **Web UI Integration:**
+    - The Web UI mirrors the local folder organization
+    - Shorts can be approved/rejected in the UI
+    - Approval status is synced to the database
+    - Approved shorts are marked for publishing
