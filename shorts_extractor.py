@@ -1016,8 +1016,15 @@ if __name__ == "__main__":
     # List of segments to extract (apologetic shorts about St. Ignatius and the early Church)
     SEGMENTS = [
         # María, Pablo, Juan, Ignacio, Timoteo, Onésimo - todos católicos
-        # El video DEBE empezar en 11:29 donde empieza "María era católica..."
-        Segment("11:29", "12:29", "Maria Pablo Juan Todos Catolicos"),
+        # ESTRATEGIA AGENTE: Hook seleccionado manualmente por inteligencia artificial (Gemini/Claude)
+        # Texto limpio, completo y directo. Duración visual calculada para lectura cómoda.
+        Segment(
+            start="11:29", 
+            end="12:29", 
+            name="Maria Pablo Juan Todos Catolicos",
+            hook_text="María era católica, Pablo era católico, Juan era católico...",
+            hook_duration=5.0 # Duración visual fija elegida por el agente
+        ),
     ]
     
     # Configuration
