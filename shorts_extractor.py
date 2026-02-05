@@ -717,14 +717,16 @@ if __name__ == "__main__":
         #     hook_duration=5.0
         # ),
         
-        # SHORT: María, Pablo y Juan eran católicos
-        # Fuente: Transcript líneas 2007-2032 - El speaker dice exactamente estas palabras en 11:29
-        # VERBATIM HOOK: El video comienza con el speaker diciendo el gancho palabra por palabra
+        # SHORT: Los herejes no heredarán el Reino de Dios
+        # Fuente: Transcript líneas 5869-6010 - 31:51 a 32:39
+        # VERBATIM HOOK: "Los herejes no heredarán el Reino de Dios"
+        # Natural conclusion at "no lo transmitido por los apóstoles"
+        # Duration: ~48 seconds (proper short length, close to 1 min)
         Segment(
-            start="11:29",
-            end="12:29",
-            name="Maria Pablo Juan Todos Catolicos",
-            hook_text="María era católica, Pablo era católico, Juan era católico",
+            start="31:51",
+            end="32:39",  # Ends at natural conclusion - complete argument
+            name="Herejes No Heredaran el Reino",
+            hook_text="Los herejes no heredarán el Reino de Dios",
             hook_duration=4.0
         ),
     ]

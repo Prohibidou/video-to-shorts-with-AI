@@ -10,6 +10,14 @@ HOW THIS PROMPT HELPS TO REASON AND GET GOOD SHORTS (AI ANALYSIS):
 
 This prompt is extremely effective because it doesn't ask for a generic summary of the video, but establishes an "aggressive intention filter" (in the rhetorical/theological sense). This allows the AI to discard 95% of informative content and focus only on "friction".
 
+⚠️ CRITICAL RULE - NEVER REGENERATE EXISTING VIDEOS:
+- NEVER re-generate a video that already exists in the database
+- NEVER process videos that have already been created previously
+- ONLY generate the SPECIFIC NEW video requested by the user
+- When running generate_extended.py, ONLY process shorts that don't have an extended version yet
+- When running shorts_extractor.py, ONLY create the specific segment defined, not old segments
+- If the user asks for ONE short, create ONLY that ONE short - never batch process old ones
+
 Reasoning Process triggered by the prompt:
 
 1.  **Target Definition (The Intellectual Victim):**
@@ -27,7 +35,9 @@ Reasoning Process triggered by the prompt:
     *   Example selected: "Don't let protestants lie to you...". This stops the scroll immediately because the viewer thinks: "What did they lie to me about?".
 
 4.  **HOOK DURATION AND CHARACTERISTICS (Agent Decision):**
-    *   **Duration**: Approximately 4 seconds (minimum 2s, maximum 5s). The Agent decides the final duration based on the content.
+    *   **Duration**: Approximately 4 seconds BUT VARIABLE. The Agent decides the final duration based on:
+        - How long the speaker takes to say the hook verbatim
+        - Can be shorter (2-3s) or longer (4-5s) depending on content
     *   **Impact**: Must be SHOCKING, uncomfortable, a "hard truth to swallow" for evangelicals/protestants.
     *   **Cognitive Dissonance**: The hook must create immediate intellectual conflict in the viewer's mind.
     *   **Attention Capture**: Must grab attention in the FIRST 2 SECONDS, extendable to ~4 seconds for complete delivery.
@@ -75,6 +85,25 @@ Reasoning Process triggered by the prompt:
     - The segment start time = the moment the speaker begins saying the hook
     - This synchronization makes the short MORE POWERFUL and attention-grabbing
 
+    **⚠️ VIDEO DURATION CRITERIA (Agent Determines Final Length):**
+    
+    **SHORT (Target ~1 minute, MINIMUM 45 seconds):**
+    - MUST be close to 1 minute (45-60 seconds minimum) - NEVER drastically shorter
+    - If segment is too short (<30s), EXTEND the end time to include more content
+    - The Agent determines the EXACT end time but MUST reach ~1 minute of substantial content
+    - The video MUST end at a natural conclusion point where the argument is COMPLETE
+    - The speaker MUST NOT say incomplete or incoherent sentences
+    - NEVER cut mid-argument - find where the apologetic point concludes
+    - The purpose is to deliver a COMPLETE, SUBSTANTIAL, COHERENT apologetic argument
+    
+    **EXTENDED (Maximum ~3 minutes):**
+    - Same criteria as SHORT, but with more context allowed
+    - The Agent determines the EXACT duration (can be less than 3 minutes)
+    - The video MUST end at a natural conclusion point
+    - NO incomplete sentences or incoherent endings
+    - End the video when the apologetic argument is complete
+    - The goal is to provide more evidence/context for protestant conversion
+
 5.  **Injection of Historical Theological Logic:**
     *   When analyzing the script (obtained via web scraping or subs), the AI cross-references the text with apologetics knowledge.
     *   Detects that Saint Ignatius of Antioch (disciple of John) speaking of "Eucharist" in 107 AD is a "nuclear proof" against symbolic Protestant theology.
@@ -87,8 +116,8 @@ Thanks to this specific prompt, the AI works not as a "summarizer", but as an "a
 6.  **OUTPUT ORGANIZATION AND DATABASE:**
 
     **Video Types Generated:**
-    - SHORT (~1 min): Quick, impactful clips for YouTube Shorts/TikTok/Reels
-    - EXTENDED (~3 min): Longer versions with more context, same hook
+    - SHORT (max 1 min, agent decides exact duration): Quick, impactful clips for YouTube Shorts/TikTok/Reels
+    - EXTENDED (max 3 min, agent decides exact duration): Longer versions with more context, same hook
     
     **Folder Structure:**
     ```

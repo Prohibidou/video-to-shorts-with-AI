@@ -117,6 +117,17 @@ def generate_extended_for_short(short: dict, video_url: str, source_video: Path,
 
 
 def main():
+    import sys
+    
+    # Parse optional short_id argument
+    target_short_id = None
+    if len(sys.argv) > 1:
+        try:
+            target_short_id = int(sys.argv[1])
+            print(f"🎯 Filtering for SHORT ID: {target_short_id}")
+        except ValueError:
+            print(f"⚠️ Invalid short_id: {sys.argv[1]}, processing all shorts")
+    
     print("=" * 60)
     print("🎬 EXTENDED VIDEO GENERATOR")
     print("=" * 60)
@@ -181,9 +192,14 @@ def main():
         output_base = Path(clips_folder) if clips_folder else Path("output/extended")
         
         for short in shorts:
-            # Process ONLY the specific short we just made
-            if short['title'] != "Maria Pablo Juan Todos Catolicos":
-                continue
+            # ONLY process the specific short ID if specified
+            # If no ID specified, skip all (require explicit ID to prevent accidental batch processing)
+            if target_short_id is not None:
+                if short['id'] != target_short_id:
+                    continue
+            else:
+                print(f"   ⚠️ No short_id specified. Use: python generate_extended.py <short_id>")
+                break
             try:
                 generate_extended_for_short(short, video_url, source_video, output_base)
             except Exception as e:
