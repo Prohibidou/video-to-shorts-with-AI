@@ -354,7 +354,10 @@ def get_all_shorts() -> list[dict]:
     cursor = conn.cursor()
     
     cursor.execute('''
-        SELECT s.*, v.url, v.title as video_title
+        SELECT s.id, s.video_id, s.title, s.summary, s.script,
+               s.start_time, s.end_time, s.output_filename, s.folder_path,
+               s.selection_reason, s.status, s.created_at, s.hook_text,
+               v.url, v.title as video_title
         FROM shorts s
         JOIN videos v ON s.video_id = v.id
         ORDER BY s.created_at DESC
@@ -371,10 +374,13 @@ def get_all_shorts() -> list[dict]:
         "start_time": row[5],
         "end_time": row[6],
         "output_filename": row[7],
-        "selection_reason": row[8],
-        "created_at": row[9],
-        "video_url": row[10],
-        "video_title": row[11]
+        "folder_path": row[8],
+        "selection_reason": row[9],
+        "status": row[10],
+        "created_at": row[11],
+        "hook_text": row[12],
+        "video_url": row[13],
+        "video_title": row[14]
     } for row in rows]
 
 
@@ -487,6 +493,62 @@ def update_short_folder(short_id: int, folder_path: str):
     cursor.execute("UPDATE shorts SET folder_path = ? WHERE id = ?", (folder_path, short_id))
     conn.commit()
     conn.close()
+
+
+def get_processed_segments(url: str) -> list[dict]:
+    """
+    Get all previously processed shorts for a given YouTube URL.
+    
+    Handles URL variants (with/without &t= params) by extracting the video ID
+    and matching against stored URLs.
+    
+    Returns a list of dicts with: id, title, start_time, end_time, status, hook_text, created_at
+    Useful for the agent to skip already-processed time ranges during analysis.
+    """
+    import re
+    
+    # Extract YouTube video ID for flexible matching
+    video_id_match = re.search(r'(?:v=|youtu\.be/)([a-zA-Z0-9_-]{11})', url)
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    if video_id_match:
+        video_id = video_id_match.group(1)
+        # Match any URL containing this video ID
+        cursor.execute("""
+            SELECT s.id, s.title, s.start_time, s.end_time, s.status, s.hook_text, 
+                   s.created_at, s.script, v.url
+            FROM shorts s
+            JOIN videos v ON s.video_id = v.id
+            WHERE v.url LIKE ?
+            ORDER BY s.start_time
+        """, (f'%{video_id}%',))
+    else:
+        # Fallback: exact match
+        cursor.execute("""
+            SELECT s.id, s.title, s.start_time, s.end_time, s.status, s.hook_text,
+                   s.created_at, s.script, v.url
+            FROM shorts s
+            JOIN videos v ON s.video_id = v.id
+            WHERE v.url = ?
+            ORDER BY s.start_time
+        """, (url,))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [{
+        "id": row[0],
+        "title": row[1],
+        "start_time": row[2],
+        "end_time": row[3],
+        "status": row[4],
+        "hook_text": row[5],
+        "created_at": row[6],
+        "script": row[7],
+        "video_url": row[8]
+    } for row in rows]
 
 
 # Initialize database on import

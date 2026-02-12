@@ -9,7 +9,6 @@ Usage:
 
 Requirements:
     - yt-dlp (pip install yt-dlp)
-    - faster-whisper (pip install faster-whisper)
     - ffmpeg (must be in system PATH)
 """
 
@@ -57,14 +56,6 @@ def time_to_seconds(time_str: str) -> float:
         raise ValueError(f"Invalid time format: {time_str}")
 
 
-def seconds_to_srt_time(seconds: float) -> str:
-    """Converts seconds to SRT format (HH:MM:SS,mmm)."""
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    millis = int((seconds - int(seconds)) * 1000)
-    return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
-
 
 def get_video_title(url: str) -> str:
     """Gets the real YouTube video title using yt-dlp."""
@@ -82,6 +73,11 @@ def get_video_title(url: str) -> str:
 
 def download_video(url: str, output_dir: Path) -> Path:
     """Downloads the YouTube video."""
+    target_file = output_dir / "source_video.mp4"
+    if target_file.exists() and target_file.stat().st_size > 0:
+        print(f"\n   ✅ Video already exists: {target_file.name}")
+        return target_file
+
     output_template = str(output_dir / "source_video.%(ext)s")
     
     print(f"\n📥 Downloading video...")
@@ -110,219 +106,18 @@ def download_video(url: str, output_dir: Path) -> Path:
     raise FileNotFoundError("Downloaded video not found")
 
 
-def transcribe_audio(video_path: Path, language: str = "es", max_words_per_line: int = 4) -> list[dict]:
-    """
-    Transcribes the video audio using faster-whisper.
-    Returns a list of short segments (maximum max_words_per_line words each).
-    """
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError:
-        print("   ⚠️  faster-whisper not installed. Installing...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "faster-whisper"], 
-                      capture_output=True)
-        from faster_whisper import WhisperModel
-    
-    print(f"   🎤 Transcribing audio...")
-    
-    # ALWAYS use 'small' model for best quality - NEVER use 'tiny'
-    # Process videos ONE BY ONE to avoid RAM issues
-    # Fallback to 'base' model if 'small' fails due to memory constraints
-    import gc
-    gc.collect()  # Force garbage collection before loading model to free RAM
-    
-    try:
-        model = WhisperModel("small", device="cpu", compute_type="int8")
-    except Exception as e:
-        print(f"   ⚠️  Memory error with 'small' model: {e}")
-        print(f"   🔄 Falling back to 'base' model (still good quality, NEVER 'tiny')...")
-        gc.collect()  # Try to free more memory
-        model = WhisperModel("base", device="cpu", compute_type="int8")
-    
-    segments, info = model.transcribe(
-        str(video_path),
-        language=language,
-        word_timestamps=True,
-        vad_filter=True
-    )
-    
-    # Collect all words with their timestamps
-    all_words = []
-    for segment in segments:
-        if segment.words:
-            for word in segment.words:
-                all_words.append({
-                    "start": word.start,
-                    "end": word.end,
-                    "text": word.word.strip()
-                })
-    
-    # Group words in small chunks (maximum max_words_per_line words)
-    result = []
-    current_chunk = []
-    chunk_start = None
-    
-    for word in all_words:
-        if chunk_start is None:
-            chunk_start = word["start"]
-        
-        current_chunk.append(word["text"])
-        
-        # Create new segment when we reach the word limit
-        if len(current_chunk) >= max_words_per_line:
-            result.append({
-                "start": chunk_start,
-                "end": word["end"],
-                "text": " ".join(current_chunk)
-            })
-            current_chunk = []
-            chunk_start = None
-    
-    # Add the last chunk if anything remains
-    if current_chunk:
-        result.append({
-            "start": chunk_start,
-            "end": all_words[-1]["end"],
-            "text": " ".join(current_chunk)
-        })
-    
-    print(f"   ✅ Transcription completed ({len(result)} fragments)")
-
-    # Replace "protestante/protestantes" with "protestantes (Evangelicos)" in subtitles
-    # and remove accents
-    import unicodedata
-    import re
-    
-    def remove_accents(text):
-        return ''.join(
-            c for c in unicodedata.normalize('NFD', text)
-            if unicodedata.category(c) != 'Mn'
-        )
-    
-    for segment in result:
-        # If text contains "protestante" or "protestantes", replace ALL the text
-        # with just "protestantes (Evangelicos)" - no other words
-        if re.search(r'\bprotestantes?\b', segment["text"], flags=re.IGNORECASE):
-            segment["text"] = "protestantes (Evangelicos)"
-        else:
-            segment["text"] = remove_accents(segment["text"])
-
-    return result
-
-
-
-
-
-
-def create_srt_file(transcription: list[dict], output_path: Path) -> Path:
-    """Creates an SRT file from the transcription."""
-    with open(output_path, 'w', encoding='utf-8') as f:
-        for i, segment in enumerate(transcription, 1):
-            start_time = seconds_to_srt_time(segment["start"])
-            end_time = seconds_to_srt_time(segment["end"])
-            text = segment["text"]
-            
-            f.write(f"{i}\n")
-            f.write(f"{start_time} --> {end_time}\n")
-            f.write(f"{text}\n\n")
-    
-    return output_path
-
-
-def create_ass_file(transcription: list[dict], output_path: Path, 
-                    font_size: int = 18, style: str = "modern") -> Path:
-    """
-    Creates an ASS file with subtitle styling for Shorts.
-    Available styles: "modern", "bold", "minimal"
-    """
-    
-    # Define styles
-    styles = {
-        "modern": {
-            "font": "Arial",
-            "size": font_size,
-            "primary_color": "&H00FFFFFF",  # White
-            "outline_color": "&H00000000",   # Black
-            "back_color": "&H80000000",      # Semi-transparent black
-            "bold": 1,
-            "outline": 2,
-            "shadow": 1,
-            "margin_v": 50
-        },
-        "bold": {
-            "font": "Impact",
-            "size": font_size + 4,
-            "primary_color": "&H00FFFFFF",
-            "outline_color": "&H00000000",
-            "back_color": "&H00000000",
-            "bold": 1,
-            "outline": 3,
-            "shadow": 0,
-            "margin_v": 60
-        },
-        "minimal": {
-            "font": "Helvetica",
-            "size": font_size,
-            "primary_color": "&H00FFFFFF",
-            "outline_color": "&H00000000",
-            "back_color": "&H00000000",
-            "bold": 0,
-            "outline": 1,
-            "shadow": 2,
-            "margin_v": 40
-        }
-    }
-    
-    s = styles.get(style, styles["modern"])
-    
-    # ASS header
-    header = f"""[Script Info]
-Title: Auto Subtitles
-ScriptType: v4.00+
-PlayResX: 1080
-PlayResY: 1920
-WrapStyle: 0
-
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{s['font']},{s['size']},{s['primary_color']},&H000000FF,{s['outline_color']},{s['back_color']},{s['bold']},0,0,0,100,100,0,0,1,{s['outline']},{s['shadow']},2,20,20,{s['margin_v']},1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-"""
-    
-    def seconds_to_ass_time(seconds: float) -> str:
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = seconds % 60
-        return f"{hours}:{minutes:02d}:{secs:05.2f}"
-    
-    with open(output_path, 'w', encoding='utf-8') as f:
-        f.write(header)
-        
-        for segment in transcription:
-            start = seconds_to_ass_time(segment["start"])
-            end = seconds_to_ass_time(segment["end"])
-            text = segment["text"].replace("\n", "\\N")
-            
-            f.write(f"Dialogue: 0,{start},{end},Default,,0,0,0,,{text}\n")
-    
-    return output_path
-
-
-def extract_clip_with_subtitles(
+def extract_clip(
     source_video: Path,
     segment: Segment,
     output_dir: Path,
     clip_index: int,
     make_vertical: bool = False,
-    add_subtitles: bool = True,
-    subtitle_style: str = "modern",
-    language: str = "es",
-    add_hook: bool = True  # Add fixed hook text in the first seconds
+    add_hook: bool = True,  # Add fixed hook text in the first seconds (unused but kept for signature comp)
+    preview_mode: bool = False # If True, only extracts script, no video rendering (deprecated logic)
 ) -> Tuple[Optional[Path], str, Optional[str]]:
-    """Extracts a clip from the source video with automatic subtitles.
+    """Extracts a clip from the source video.
     Returns (file_path, script_text, hook_text).
+    Script text and hook text will be empty/None as transcription is removed.
     """
     
     start_seconds = time_to_seconds(segment.start)
@@ -337,125 +132,221 @@ def extract_clip_with_subtitles(
     print(f"\n🎬 Extracting clip {clip_index}: {segment.name}")
     print(f"   ⏱️  {segment.start} → {segment.end} (duration: {duration:.1f}s)")
     
-    # Step 1: Extract temporary clip (without subtitles)
-    cmd_extract = [
-        "ffmpeg", "-y",
-        "-ss", str(start_seconds),
-        "-i", str(source_video),
-        "-t", str(duration),
-        "-c:v", "libx264",
-        "-preset", "fast",
-        "-crf", "23",
-        "-c:a", "aac",
-        "-b:a", "128k",
-        str(temp_clip)
-    ]
+    # Step 1: Extract temporary clip (or audio if in preview mode)
+    if preview_mode:
+        # Extract audio only for faster processing
+        temp_clip = output_dir / f"temp_audio_{clip_index:02d}.m4a"
+        cmd_extract = [
+            "ffmpeg", "-y",
+            "-ss", str(start_seconds),
+            "-i", str(source_video),
+            "-t", str(duration),
+            "-vn",          # No video
+            "-c:a", "aac",
+            "-b:a", "128k",
+            str(temp_clip)
+        ]
+    else:
+        # Extract video + audio
+        cmd_extract = [
+            "ffmpeg", "-y",
+            "-ss", str(start_seconds),
+            "-i", str(source_video),
+            "-t", str(duration),
+            "-c:v", "libx264",
+            "-preset", "fast",
+            "-crf", "23",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            str(temp_clip)
+        ]
     
     # FFmpeg writes to stderr even on successful runs, so we check the file
-    subprocess.run(cmd_extract, capture_output=True, text=True)
+    result = subprocess.run(cmd_extract, capture_output=True, text=True)
+    
     if not temp_clip.exists():
         print(f"   ❌ Error: Could not create temporary clip")
+        print(f"   ℹ️ FFmpeg stderr: {result.stderr[:500]}")
         return None, "", None
-    
-    if not add_subtitles:
-        # If we don't want subtitles, rename and return
-        temp_clip.rename(output_file)
-        print(f"   ✅ Saved: {output_file.name}")
-        return output_file, "", None
-    
-    # Step 2: Transcribe the clip (maximum 2 words per fragment = 1 single line)
-    transcription = transcribe_audio(temp_clip, language, max_words_per_line=2)
-    
-    if not transcription:
-        print(f"   ⚠️  No audio/voice detected. Saving without subtitles.")
-        temp_clip.rename(output_file)
-        return output_file, "", None
-    
-    # Determine hook configuration
-    hook_duration = getattr(segment, 'hook_duration', 4.0)
-    hook_text = getattr(segment, 'hook_text', None)
-    hook_end_time = hook_duration
-    
-    if add_hook and hook_text:
-        print(f"   🎣 Manual hook: \"{hook_text[:50]}...\" (0-{hook_end_time:.1f}s)")
-    elif add_hook:
-        print(f"   ℹ️  No manual hook provided. Skipping hook generation.")
-        hook_text = None
-    
-    
-    # Step 3: Create SRT file with hook included as first subtitle
-    subs_file = output_dir / f"subs_{clip_index:02d}.srt"
-    
-    with open(subs_file, 'w', encoding='utf-8') as f:
-        subtitle_index = 1
         
-        # Add hook as first subtitle (complete text, fixed for ~4 seconds)
-        # IMPORTANT: Keep hook to MAX 2 LINES to stay at bottom like regular subtitles
-        if add_hook and hook_text:
-            # Split into maximum 2 lines (same position as regular subtitles)
-            words = hook_text.split()
-            mid = len(words) // 2
-            if len(words) <= 4:
-                # Short hook: single line
-                formatted_hook = hook_text
-            else:
-                # Longer hook: split into exactly 2 lines
-                line1 = " ".join(words[:mid])
-                line2 = " ".join(words[mid:])
-                formatted_hook = f"{line1}\n{line2}"
+    if temp_clip.stat().st_size == 0:
+        print(f"   ❌ Error: Temporary clip is 0 bytes (corrupted)")
+        print(f"   ℹ️ FFmpeg stderr: {result.stderr[:500]}")
+        temp_clip.unlink()
+        return None, "", None
+
+    # Step 1.5: Remove silence (dead air) if requested
+    # Robust method: Detect silence -> Split -> Concat (preserves sync)
+    # IMPORTANT: The first hook_duration seconds are PROTECTED and never cut
+    hook_protection_seconds = segment.hook_duration if segment.hook_duration else 4.0
+    try:
+        print("   ✂️  Analyzing silence patterns...")
+        print(f"   🛡️  Hook protection zone: first {hook_protection_seconds:.1f}s are untouchable")
+        silence_thresh = "-35dB"
+        silence_duration = "0.5" # Minimum duration (seconds) to consider silence
+        
+        # 1. Detect silences
+        cmd_detect = [
+            "ffmpeg", "-i", str(temp_clip),
+            "-af", f"silencedetect=noise={silence_thresh}:d={silence_duration}",
+            "-f", "null", "-"
+        ]
+        result_detect = subprocess.run(cmd_detect, capture_output=True, text=True)
+        
+        # 2. Parse silence info
+        # Output format: [silencedetect @ ...] silence_start: 12.345
+        #                [silencedetect @ ...] silence_end: 14.567
+        silence_starts = []
+        silence_ends = []
+        for line in result_detect.stderr.splitlines():
+            if "silence_start" in line:
+                try:
+                    silence_starts.append(float(line.split("silence_start: ")[1]))
+                except: pass
+            elif "silence_end" in line:
+                try:
+                    silence_ends.append(float(line.split("silence_end: ")[1].split(" ")[0]))
+                except: pass
+        
+        # 3. Filter out silences that overlap with the hook protection zone
+        # Any silence that starts OR ends within the first hook_protection_seconds is SKIPPED
+        filtered_starts = []
+        filtered_ends = []
+        skipped_count = 0
+        for i in range(len(silence_starts)):
+            s_start = silence_starts[i]
+            s_end = silence_ends[i] if i < len(silence_ends) else None
             
-            f.write(f"{subtitle_index}\n")
-            f.write(f"00:00:00,000 --> {seconds_to_srt_time(hook_end_time)}\n")
-            f.write(f"{formatted_hook}\n\n")
-            subtitle_index += 1
-        
-        # Add normal subtitles (after the hook)
-        for seg in transcription:
-            # Skip those within the hook period
-            if add_hook and hook_text and seg["start"] < hook_end_time:
+            # Skip if silence starts within the hook protection zone
+            if s_start < hook_protection_seconds:
+                skipped_count += 1
+                continue
+            # Skip if silence ends within the hook protection zone (overlapping silence)
+            if s_end is not None and s_end < hook_protection_seconds:
+                skipped_count += 1
                 continue
             
-            start_time = seconds_to_srt_time(seg["start"])
-            end_time = seconds_to_srt_time(seg["end"])
-            text = seg["text"]
+            filtered_starts.append(s_start)
+            if s_end is not None:
+                filtered_ends.append(s_end)
+        
+        if skipped_count > 0:
+            print(f"   🛡️  Skipped {skipped_count} silence(s) inside hook protection zone")
+        
+        silence_starts = filtered_starts
+        silence_ends = filtered_ends
+        
+        if not silence_starts:
+            print("   ℹ️  No significant silence found (outside hook zone). Skipping cut.")
+        else:
+            # Construct keep segments
+            # Keep: [0, start[0]], [end[0], start[1]], [end[1], end_of_video]
             
-            f.write(f"{subtitle_index}\n")
-            f.write(f"{start_time} --> {end_time}\n")
-            f.write(f"{text}\n\n")
-            subtitle_index += 1
+            # Get video duration
+            cmd_dur = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(temp_clip)]
+            res_dur = subprocess.run(cmd_dur, capture_output=True, text=True)
+            total_duration = float(res_dur.stdout.strip())
+            
+            keep_segments = []
+            last_pos = 0.0
+            
+            # Safest iteration
+            num_silences = len(silence_starts)
+            for i in range(num_silences):
+                s_start = silence_starts[i]
+                
+                # Keep segment from last_pos to s_start
+                if s_start > last_pos + 0.1: # Keep if segment > 0.1s
+                    keep_segments.append((last_pos, s_start))
+                
+                # Update last_pos to end of this silence
+                if i < len(silence_ends):
+                     # Adjust end to skip the silence
+                     # Add a small buffer (0.1s) to avoid clipping words
+                    last_pos = silence_ends[i] - 0.1 # Overlap slightly into silence to be safe
+                else:
+                    last_pos = total_duration # Silence goes to end
+            
+            # Add final segment
+            if last_pos < total_duration - 0.1:
+                keep_segments.append((last_pos, total_duration))
+            
+            if len(keep_segments) < 1:
+                print("   ⚠️  All content detected as silence? Skipping cut.")
+            elif len(keep_segments) == 1 and keep_segments[0][0] == 0.0 and keep_segments[0][1] == total_duration:
+                 print("   ℹ️  Silence detected but effectively full video. Skipping.")
+            else:
+                print(f"   ✂️  Cutting {len(keep_segments)} active segments...")
+                
+                # 3. Extract segments
+                segment_files = []
+                for i, (start, end) in enumerate(keep_segments):
+                    seg_file = output_dir / f"temp_seg_{clip_index}_{i}.mp4"
+                    cmd_seg = [
+                        "ffmpeg", "-y",
+                        "-i", str(temp_clip),
+                        "-ss", f"{start:.3f}",
+                        "-to", f"{end:.3f}",
+                        "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                        "-c:a", "aac",
+                        str(seg_file)
+                    ]
+                    subprocess.run(cmd_seg, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if seg_file.exists():
+                        segment_files.append(seg_file)
+                
+                # 4. Concat
+                if segment_files:
+                    concat_list = output_dir / f"concat_list_{clip_index}.txt"
+                    with open(concat_list, "w") as f:
+                        for sf in segment_files:
+                            f.write(f"file '{sf.name}'\n")
+                    
+                    processed_clip = output_dir / f"processed_{clip_index:02d}.mp4"
+                    cmd_concat = [
+                        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                        "-i", str(concat_list),
+                        "-c", "copy",
+                        str(processed_clip)
+                    ]
+                    subprocess.run(cmd_concat, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    
+                    # Cleanup segments
+                    concat_list.unlink()
+                    for sf in segment_files:
+                        try: sf.unlink()
+                        except: pass
+                        
+                    if processed_clip.exists() and processed_clip.stat().st_size > 0:
+                        temp_clip.unlink()
+                        processed_clip.rename(temp_clip)
+                        print("   ✅ Silence removed successfully (Synced Audio/Video)")
+                    else:
+                        print("   ⚠️  Concat failed. Using original.")
+                        
+    except Exception as e:
+        print(f"   ⚠️  Error in silence removal: {e}") 
     
-    # Step 4: Burn subtitles into the video
-    print(f"   📝 Adding subtitles to video...")
+    if preview_mode:
+        print(f"   ⚠️ Preview mode is deprecated as transcription is removed.")
+        return None, "", None
+
     
-    # Subtitle style for Shorts - positioned at the VERY BOTTOM (below speaker)
-    subtitle_style = (
-        "FontName=Arial,"
-        "FontSize=18,"
-        "Bold=1,"
-        "PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,"
-        "Outline=2,"
-        "Shadow=1,"
-        "MarginV=20,"  # Small margin to keep text at the very bottom
-        "MarginL=30,"
-        "MarginR=30,"
-        "Alignment=2"  # Bottom-center alignment
-    )
+    # Step 4: Finalize video
     
     if make_vertical:
-        # Vertical 9:16 format with subtitles
+        # Vertical 9:16 format (without subtitles)
         filter_complex = (
             f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
             f"crop=1080:1920,boxblur=20:5[bg];"
             f"[0:v]scale=1080:-2:force_original_aspect_ratio=decrease[fg];"
-            f"[bg][fg]overlay=(W-w)/2:(H-h)/2[v];"
-            f"[v]subtitles='{subs_file.name}':force_style='{subtitle_style}'[outv]"
+            f"[bg][fg]overlay=(W-w)/2:(H-h)/2[v]"
         )
-        cmd_subs = [
+        cmd_final = [
             "ffmpeg", "-y",
             "-i", temp_clip.name,
             "-filter_complex", filter_complex,
-            "-map", "[outv]",
+            "-map", "[v]",
             "-map", "0:a",
             "-c:v", "libx264",
             "-preset", "fast",
@@ -465,38 +356,45 @@ def extract_clip_with_subtitles(
             output_file.name
         ]
     else:
-        # Keep original format with burned-in subtitles
-        subtitle_filter = f"subtitles='{subs_file.name}':force_style='{subtitle_style}'"
-        cmd_subs = [
-            "ffmpeg", "-y",
-            "-i", temp_clip.name,
-            "-vf", subtitle_filter,
-            "-c:v", "libx264",
-            "-preset", "fast",
-            "-crf", "23",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            output_file.name
-        ]
+        # Keep original format
+        # Just rename/copy temp clip as we don't have burn-in anymore
+        # But to be safe and consistent with previous behavior (re-encoding), let's keep it simple
+        # Actually, if not vertical, we can just move the temp clip
+        temp_clip.rename(output_file)
+        print(f"   ✅ Saved: {output_file.name}")
+        return output_file, "", None
     
     # Run FFmpeg from the clip directory to avoid path issues
-    result = subprocess.run(cmd_subs, capture_output=True, text=True, cwd=str(output_dir))
+    # Fix: redirect to log file to prevent pipe buffer deadlock on long FFmpeg output
+    log_file = output_dir / f"ffmpeg_log_{clip_index}.txt"
+    with open(log_file, "w") as f_log:
+        result = subprocess.run(cmd_final, stdout=f_log, stderr=f_log, cwd=str(output_dir))
+    
+    # Check if FFmpeg failed
+    if result.returncode != 0:
+        print(f"   ❌ Error: FFmpeg failed (exit code {result.returncode}).")
+        try:
+            with open(log_file, "r") as f_read:
+                print(f"   ℹ️ Log: {f_read.read()[:500]}")
+        except: pass
+        return None, "", None
+    
+    # Clean up log file on success
+    if log_file.exists():
+        log_file.unlink()
     
     # Clean up temporary files
     if temp_clip.exists():
         temp_clip.unlink()
-    if subs_file.exists():
-        subs_file.unlink()
     
     # ROBUST VALIDATION: Check if output file exists AND is not 0 bytes (corrupted)
     if not output_file.exists():
-        print(f"   ❌ Error: Could not create video with subtitles")
+        print(f"   ❌ Error: Could not create video")
         return None, "", None
     
     # Check for corrupted (0-byte) file - indicates FFmpeg failure (memory error, etc.)
     if output_file.stat().st_size == 0:
         print(f"   ❌ Error: Output file is 0 bytes (corrupted). FFmpeg may have failed due to memory.")
-        print(f"   ℹ️  FFmpeg stderr: {result.stderr[:500] if result.stderr else 'No error output'}")
         output_file.unlink()  # Delete corrupted file
         return None, "", None
     
@@ -505,11 +403,8 @@ def extract_clip_with_subtitles(
     if output_file.stat().st_size < min_size:
         print(f"   ⚠️  Warning: Output file is unusually small ({output_file.stat().st_size} bytes)")
     
-    # Extract complete script text
-    script_text = " ".join([seg["text"] for seg in transcription])
-    
-    print(f"   ✅ Saved: {output_file.name} (with subtitles)")
-    return output_file, script_text, hook_text
+    print(f"   ✅ Saved: {output_file.name}")
+    return output_file, "", None
 
 
 def extract_clip_fast(
@@ -559,20 +454,20 @@ def process_video(
     output_dir: Path,
     make_vertical: bool = False,
     fast_mode: bool = False,
-    add_subtitles: bool = True,
-    subtitle_style: str = "modern",
-    language: str = "es",
-    keep_source: bool = True
+    keep_source: bool = True,
+    preview_mode: bool = False,
+    resume_mode: bool = False
 ):
     """Processes a complete video extracting all segments."""
     
     print("=" * 60)
     print("🎥 YOUTUBE SHORTS EXTRACTOR")
+    if preview_mode:
+        print("   👀 PREVIEW MODE (No video rendering)")
+    if resume_mode:
+        print("   ⏯️  RESUME MODE (Skipping existing clips)")
     print("=" * 60)
     
-    if add_subtitles and fast_mode:
-        print("⚠️  Note: fast_mode disables subtitles. Using normal mode.")
-        fast_mode = False
     
     # Create output directory
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -582,6 +477,8 @@ def process_video(
     
     # Get real YouTube video title
     video_title = get_video_title(url)
+    if not video_title:
+        video_title = "Untitled Video"
     if video_title:
         print(f"   📺 Title: {video_title}")
     
@@ -601,8 +498,8 @@ def process_video(
     
     # Extract each segment
     print(f"\n📋 Processing {len(segments)} segments...")
-    if add_subtitles:
-        print(f"   📝 Automatic subtitles: ENABLED (style: {subtitle_style})")
+    if preview_mode:
+        print("   👀 PREVIEW MODE (Logic deprecated, will skip extraction)")
     
     extracted_clips = []
     all_scripts = []  # To save complete video transcription
@@ -613,6 +510,15 @@ def process_video(
         short_folder = video_clips_dir / f"{i:02d}_{safe_segment_name}"
         short_folder.mkdir(parents=True, exist_ok=True)
         
+        # Check for existing clip in resume mode
+        final_clip_name = f"clip_{i:02d}_{safe_segment_name}.mp4"
+        final_clip_path = short_folder / final_clip_name
+        
+        if resume_mode and final_clip_path.exists() and final_clip_path.stat().st_size > 100000:
+            print(f"\n✅ Clip {i} {segment.name} already exists. Skipping.")
+            extracted_clips.append(final_clip_path)
+            continue
+
         if fast_mode:
             clip = extract_clip_fast(source_video, segment, short_folder, i)
             script_text = ""
@@ -621,12 +527,10 @@ def process_video(
             # Retry logic: attempt up to 2 times if extraction fails (memory errors, etc.)
             max_attempts = 2
             for attempt in range(1, max_attempts + 1):
-                clip, script_text, final_hook_text = extract_clip_with_subtitles(
+                clip, script_text, final_hook_text = extract_clip(
                     source_video, segment, short_folder, i,
                     make_vertical=make_vertical,
-                    add_subtitles=add_subtitles,
-                    subtitle_style=subtitle_style,
-                    language=language
+                    preview_mode=preview_mode
                 )
                 if clip:
                     break  # Success, exit retry loop
@@ -635,13 +539,19 @@ def process_video(
                     import time
                     time.sleep(2)  # Brief pause to allow memory recovery
         
-        if clip:
-            extracted_clips.append(clip)
+        if clip or (preview_mode and script_text):
+            if clip:
+                extracted_clips.append(clip)
+            
             all_scripts.append(script_text)
             
             # Save short in database with folder_path
-            if DB_AVAILABLE and video_id:
+            # In Preview Mode clip is None, but we have script_text
+            if DB_AVAILABLE and video_id and not preview_mode:
                 try:
+                    # Use segment.hook_text as fallback when extract_clip doesn't return hook
+                    db_hook_text = final_hook_text or segment.hook_text
+                    
                     short_id = save_short(
                         video_id=video_id,
                         title=segment.name,
@@ -651,7 +561,7 @@ def process_video(
                         end_time=segment.end,
                         output_filename=str(clip),
                         folder_path=str(short_folder),
-                        hook_text=final_hook_text
+                        hook_text=db_hook_text
                     )
                     print(f"   💾 Short saved to DB (ID: {short_id})")
                 except Exception as e:
@@ -675,9 +585,57 @@ def process_video(
     print("✅ PROCESS COMPLETED")
     print("=" * 60)
     print(f"   📂 Clips saved to: {video_clips_dir}")
+    if preview_mode:
+         print(f"   👀 Preview completed for {len(all_scripts)} scripts.")
+         
+         # Interactive selection loop
+         while True:
+            print("\n" + "="*60)
+            print("👇 SELECTION MENU")
+            print("Enter the numbers of the shorts to render (comma-separated, e.g., 1,3)")
+            print("Or type 'all' to render all, or 'q' to quit.")
+            choice = input("👉 Your choice: ").strip().lower()
+            
+            if choice == 'q' or choice == 'quit' or not choice:
+                print("👋 Exiting without rendering.")
+                return extracted_clips
+            
+            selected_indices = []
+            if choice == 'all':
+                selected_indices = range(len(segments))
+            else:
+                try:
+                    parts = choice.split(',')
+                    for p in parts:
+                        idx = int(p.strip()) - 1
+                        if 0 <= idx < len(segments):
+                            selected_indices.append(idx)
+                        else:
+                            print(f"⚠️  Invalid index ignored: {p}")
+                except ValueError:
+                    print("❌ Invalid input format. Please try again.")
+                    continue
+            
+            if not selected_indices:
+                print("⚠️  No valid shorts selected.")
+                continue
+                
+            # Filter segments based on selection
+            selected_segments = [segments[i] for i in selected_indices]
+            print(f"\n🚀 Rendering {len(selected_segments)} selected shorts...")
+            
+            # Recursive call with preview_mode=False
+            return process_video(
+                url=url,
+                segments=selected_segments,
+                output_dir=output_dir,
+                make_vertical=make_vertical,
+                fast_mode=fast_mode,
+                keep_source=keep_source,
+                preview_mode=False # RENDER NOW
+            )
+
     print(f"   📊 Clips extracted: {len(extracted_clips)}/{len(segments)}")
-    if add_subtitles:
-        print(f"   📝 SRT files also saved for each clip")
     if DB_AVAILABLE:
         print(f"   💾 Data saved to database")
     
@@ -685,70 +643,73 @@ def process_video(
 
 
 # =============================================================================
-# CONFIGURATION - EDIT THIS WITH YOUR DATA
+# CLI - Reads configuration from a JSON file
 # =============================================================================
 
 if __name__ == "__main__":
     
-    # YouTube video URL
-    VIDEO_URL = "https://www.youtube.com/watch?v=JxAdV9YVbsY"
+    if len(sys.argv) < 2:
+        print("=" * 60)
+        print("🎥 YOUTUBE SHORTS EXTRACTOR")
+        print("=" * 60)
+        print()
+        print("Usage: python shorts_extractor.py <config.json>")
+        print()
+        print("JSON format:")
+        print('  {')
+        print('    "url": "https://www.youtube.com/watch?v=...",')
+        print('    "segments": [')
+        print('      {')
+        print('        "name": "Title for DB and filename",')
+        print('        "start": "MM:SS or HH:MM:SS",')
+        print('        "end": "MM:SS or HH:MM:SS",')
+        print('        "hook_text": "Opening hook text",')
+        print('        "hook_duration": 4.0')
+        print('      }')
+        print('    ],')
+        print('    "make_vertical": true,')
+        print('    "fast_mode": false,')
+        print('    "keep_source": true')
+        print('  }')
+        sys.exit(1)
     
-    # List of segments to extract (apologetic shorts about St. Ignatius and the early Church)
+    config_path = Path(sys.argv[1])
+    if not config_path.exists():
+        print(f"❌ Config file not found: {config_path}")
+        sys.exit(1)
+    
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    
+    VIDEO_URL = config["url"]
     SEGMENTS = [
-        # Segment 1 (Ya generado anteriormente - comentado)
-        # Segment(start="11:29", end="12:29", name="Maria Pablo Juan...", ...),
-
-        # NUEVO SEGMENTO (DEMOSTRACIÓN DE FLEXIBILIDAD AGENTE)
-        # Tema: La jerarquía que critican los protestantes ya estaba en el siglo I
-        # Segment(
-        #     start="09:24", 
-        #     end="10:24", 
-        #     name="Jerarquia Eclesiastica Siglo 1",
-        #     hook_text="La jerarquía católica ya existía en el siglo I",
-        #     hook_duration=5.0 
-        # ),
-
-        # NUEVO SHORT: Timoteo Obispo y Mártir (comentado)
-        # Segment(
-        #     start="06:48",
-        #     end="07:48",
-        #     name="Timoteo Obispo de Efeso",
-        #     hook_text="San Pablo nombró a Timoteo Obispo de Efeso",
-        #     hook_duration=5.0
-        # ),
-        
-        # SHORT: Los herejes no heredarán el Reino de Dios
-        # Fuente: Transcript líneas 5869-6010 - 31:51 a 32:39
-        # VERBATIM HOOK: "Los herejes no heredarán el Reino de Dios"
-        # Natural conclusion at "no lo transmitido por los apóstoles"
-        # Duration: ~48 seconds (proper short length, close to 1 min)
         Segment(
-            start="31:51",
-            end="32:39",  # Ends at natural conclusion - complete argument
-            name="Herejes No Heredaran el Reino",
-            hook_text="Los herejes no heredarán el Reino de Dios",
-            hook_duration=4.0
-        ),
+            name=seg["name"],
+            start=seg["start"],
+            end=seg["end"],
+            hook_text=seg.get("hook_text"),
+            hook_duration=seg.get("hook_duration", 4.0)
+        )
+        for seg in config["segments"]
     ]
     
-    # Configuration
-    OUTPUT_DIR = Path(__file__).parent / "output"  # Output folder
-    MAKE_VERTICAL = True   # True = 9:16 format for YouTube Shorts/TikTok/Reels
-    FAST_MODE = False      # True = no subtitles, instant cut
-    ADD_SUBTITLES = True   # True = generate automatic subtitles
-    SUBTITLE_STYLE = "modern"  # Options: "modern", "bold", "minimal"
-    LANGUAGE = "es"        # Video language for transcription
-    KEEP_SOURCE = True     # True = keep original downloaded video
+    OUTPUT_DIR = Path(config.get("output_dir", str(Path(__file__).parent / "output")))
+    MAKE_VERTICAL = config.get("make_vertical", True)
+    FAST_MODE = config.get("fast_mode", False)
+    KEEP_SOURCE = config.get("keep_source", True)
+    PREVIEW_MODE = config.get("preview_mode", False)
+    RESUME_MODE = config.get("resume_mode", False)
     
-    # Execute
+    print(f"📄 Loaded {len(SEGMENTS)} segments from: {config_path.name}")
+    
     process_video(
         url=VIDEO_URL,
         segments=SEGMENTS,
         output_dir=OUTPUT_DIR,
         make_vertical=MAKE_VERTICAL,
         fast_mode=FAST_MODE,
-        add_subtitles=ADD_SUBTITLES,
-        subtitle_style=SUBTITLE_STYLE,
-        language=LANGUAGE,
-        keep_source=KEEP_SOURCE
+        keep_source=KEEP_SOURCE,
+        preview_mode=PREVIEW_MODE,
+        resume_mode=RESUME_MODE
     )
+

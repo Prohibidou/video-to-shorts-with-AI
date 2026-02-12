@@ -1,9 +1,89 @@
-[
-    {
-        "start": "12:55",
-        "end": "13:58",
-        "name": "A Los Protestantes No Les Mientan",
-        "hook_duration": 4.0,
-        "hook_text": "La Iglesia apostólica es la Iglesia Católica y a los protestantes no les mientan"
-    }
-]
+{
+    "video_url": "https://www.youtube.com/watch?v=JxAdV9YVbsY",
+    "segments": [
+        {
+            "start": "08:34",
+            "end": "11:40",
+            "name": "Sucesion_Apostolica_y_Jerarquia",
+            "hook_text": "¿Iglesia democrática? No en la Biblia."
+        },
+        {
+            "start": "13:05",
+            "end": "16:10",
+            "name": "Iglesia_Apostolica_es_Catolica",
+            "hook_text": "La Iglesia Apostólica SIEMPRE fue Católica."
+        },
+        {
+            "start": "17:48",
+            "end": "20:45",
+            "name": "Elogio_Pureza_Doctrinal",
+            "hook_text": "La Iglesia de Éfeso NO tenía herejías."
+        },
+        {
+            "start": "18:56",
+            "end": "21:40",
+            "name": "Imposibilidad_Gran_Apostasia",
+            "hook_text": "¿Gran Apostasía? Imposible con María y Juan."
+        },
+        {
+            "start": "21:51",
+            "end": "24:50",
+            "name": "Rechazo_Falsos_Maestros",
+            "hook_text": "Cristo ALABA expulsar a falsos maestros."
+        },
+        {
+            "start": "25:15",
+            "end": "28:15",
+            "name": "Herejia_Peor_que_Adulterio",
+            "hook_text": "La herejía corrompe más que el adulterio."
+        },
+        {
+            "start": "32:09",
+            "end": "33:55",
+            "name": "Llamado_Convertir_Protestantes",
+            "hook_text": "Hay que sacar a los protestantes del error."
+        },
+        {
+            "start": "34:50",
+            "end": "38:00",
+            "name": "Titulos_Honorificos",
+            "hook_text": "¿Por qué llamamos 'Padre' a los sacerdotes?"
+        },
+        {
+            "start": "39:41",
+            "end": "42:40",
+            "name": "Fe_y_Caridad_Necesarias",
+            "hook_text": "Solo la Fe NO salva. Falta la Caridad."
+        },
+        {
+            "start": "43:44",
+            "end": "46:40",
+            "name": "Cizana_no_justifica_Cisma",
+            "hook_text": "Los malos curas NO justifican irse de la Iglesia."
+        },
+        {
+            "start": "50:30",
+            "end": "53:30",
+            "name": "Falso_Ecumenismo_y_Verdad",
+            "hook_text": "No se puede unir la LUZ con las TINIEBLAS."
+        },
+        {
+            "start": "55:34",
+            "end": "58:30",
+            "name": "Sin_Obispo_no_hay_Eucaristia",
+            "hook_text": "Sin Obispo, NO hay verdadera Eucaristía."
+        },
+        {
+            "start": "58:38",
+            "end": "01:01:30",
+            "name": "Tunica_Inconsutil_y_Unidad",
+            "hook_text": "El Cisma DESGARRA el cuerpo de Cristo."
+        },
+        {
+            "start": "01:06:30",
+            "end": "01:09:30",
+            "name": "Valor_Martirio_vs_Tibieza",
+            "hook_text": "Los primeros cristianos ANHELABAN el martirio."
+        }
+    ]
+}
