@@ -1,0 +1,22 @@
+{
+  "url": "https://youtu.be/L7g1QC4ivaw?si=o800i1QhW8triHgD",
+  "segments": [
+    {
+      "name": "Peligro_Cultos_Pentecostales",
+      "start": "31:49",
+      "end": "34:45",
+      "hook_text": "Cuando vas a un culto pentecostal y los pentecostales te ponen la mano en la cabeza y vos salís de ahí poseído.",
+      "hook_duration": 5.0
+    },
+    {
+      "name": "Poderes_Avengers_Demonios",
+      "start": "18:51",
+      "end": "21:50",
+      "hook_text": "Algunos de los poderes que estos Avengers tienen no son ni más ni menos que estos poderes que poseen las personas poseídas por demonios.",
+      "hook_duration": 6.0
+    }
+  ],
+  "make_vertical": true,
+  "fast_mode": false,
+  "keep_source": true
+}

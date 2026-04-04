@@ -13,6 +13,8 @@ clips = [
         "start": "18:51",
         "end": "21:50",
         "screenshot": BASE / r"02_Poderes_Avengers_Demonios\solo debe verse esto.png",
+        "header_img": BASE / r"02_Poderes_Avengers_Demonios\titulo.png",
+        "header_text": "Avengers tienen poderes de endemoniados",
         "switch_time": None,
         "robust_trim": False,
         "fluidity_opt": True  # NEW: Remove dead times
@@ -94,8 +96,14 @@ for clip_info in clips:
     
     # STEP 3: Visual Enhancement (Overlay + End Card)
     final = d / "final_v2.mp4"
-    print("   [3/3] Applying visual overlay (End-Card)...")
-    subprocess.run(["python", "enhance_short.py", str(subbed), str(clip_info["screenshot"]), "--output", str(final)], check=True)
+    print("   [3/3] Applying visual overlay (Header + End-Card)...")
+    enhance_cmd = ["python", "enhance_short.py", str(subbed), str(clip_info["screenshot"]), "--output", str(final)]
+    if clip_info.get("header_img"):
+        enhance_cmd.extend(["--header-img", str(clip_info["header_img"])])
+    if clip_info.get("header_text"):
+        enhance_cmd.extend(["--header-text", clip_info["header_text"]])
+    
+    subprocess.run(enhance_cmd, check=True)
     
     # Cleanup
     if temp_source.exists(): temp_source.unlink()

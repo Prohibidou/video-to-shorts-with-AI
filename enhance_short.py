@@ -49,7 +49,8 @@ def get_duration(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, output_path: Path):
+def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, output_path: Path, 
+                  header_img_path: Path = None, header_text: str = None):
     """Apply all visual enhancements using FFmpeg."""
     font_path = "C:/Windows/Fonts/arial.ttf"
     escaped_font = font_path.replace(":", "\\:")
@@ -59,49 +60,77 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     end_start = max(0, dur - 5)
     print(f"   [INFO] Video duration: {dur:.1f}s, end-card from {end_start:.1f}s")
 
-    filter_complex = (
-        # Process screenshot - scaled to 500px wide for the end-card
-        f"[1:v]scale=500:-1[img]; "
-        # Process like button (v) - 1000px wide, chroma-keyed
-        f"[2:v]scale=1000:-1,chromakey=0x00FF00:0.1:0.2,split=3[b1][b2][b3]; "
-        f"[b1]setpts=PTS+20/TB[b1t]; "
-        f"[b2]setpts=PTS+80/TB[b2t]; "
-        f"[b3]setpts=PTS+140/TB[b3t]; "
-        # END CARD: black box covering the ENTIRE frame in the last 5 seconds
-        f"[0:v]drawbox=x=0:y=0:w=1080:h=1920:color=black:t=fill"
-        f":enable='gte(t,{end_start:.2f})'[v_endbox]; "
-        # 'video completo :' text centered, only visible in the end card
-        f"[v_endbox]drawtext=fontfile='{escaped_font}':text='video completo \\:'"
-        f":fontcolor=white:fontsize=52:x=(w-tw)/2:y=700"
-        f":enable='gte(t,{end_start:.2f})'[v_txt]; "
-        # Screenshot centered below the text, only in end card
-        f"[v_txt][img]overlay=x=(W-w)/2:y=800"
-        f":enable='gte(t,{end_start:.2f})'[v_midt]; "
-        # Overlay like button at y=1500, centered, at 20s/80s/140s
-        f"[v_midt][b1t]overlay=x=(W-w)/2:y=1500:enable='between(t,20,29)'[v1_btn]; "
-        f"[v1_btn][b2t]overlay=x=(W-w)/2:y=1500:enable='between(t,80,89)'[v2_btn]; "
-        f"[v2_btn][b3t]overlay=x=(W-w)/2:y=1500:enable='between(t,140,149)'[outv]; "
-        # Mix audio - like button sounds at 20s/80s/140s
-        f"[2:a]asplit=3[a1][a2][a3]; "
-        f"[a1]adelay=20000|20000[a1t]; "
-        f"[a2]adelay=80000|80000[a2t]; "
-        f"[a3]adelay=140000|140000[a3t]; "
-        f"[0:a][a1t][a2t][a3t]amix=inputs=4:duration=first:normalize=0[outa]"
-    )
-
-    cmd = [
-        "ffmpeg", "-y",
+    inputs = [
         "-i", str(clip_path),
         "-i", str(screenshot_path),
-        "-i", str(like_btn_path),
+        "-i", str(like_btn_path)
+    ]
+    
+    # Filter Complex Building
+    # 1. Process screenshot - scaled to 500px wide for the end-card
+    filters = [f"[1:v]scale=500:-1[img]"]
+    
+    # 2. Process like button (v) - 1000px wide, chroma-keyed
+    filters.append(f"[2:v]scale=1000:-1,chromakey=0x00FF00:0.1:0.2,split=3[b1][b2][b3]")
+    filters.append(f"[b1]setpts=PTS+20/TB[b1t]")
+    filters.append(f"[b2]setpts=PTS+80/TB[b2t]")
+    filters.append(f"[b3]setpts=PTS+140/TB[b3t]")
+    
+    # Base video processing
+    current_v = "[0:v]"
+    
+    # HEADER (Optional) - First 50 seconds
+    if header_img_path and header_img_path.exists():
+        inputs.extend(["-i", str(header_img_path)])
+        idx = len(inputs) // 2 - 1 # Current index of header_img
+        
+        # Scale header image to 220px height
+        filters.append(f"[{idx}:v]scale=-1:220[hdr_img]")
+        
+        # Overlay header image centered at y=200
+        filters.append(f"{current_v}[hdr_img]overlay=x=(W-w)/2:y=200:enable='lt(t,50)'[v_hdr_img]")
+        current_v = "[v_hdr_img]"
+        
+        if header_text:
+            # Place text centered below the image (image y=200 + height=220 + 30 spacer = 450)
+            filters.append(f"{current_v}drawtext=fontfile='{escaped_font}':text='{header_text}':"
+                           f"fontcolor=white:fontsize=52:x=(w-tw)/2:y=450:"
+                           f"bordercolor=black:borderw=2:enable='lt(t,50)'[v_hdr_full]")
+            current_v = "[v_hdr_full]"
+
+    # END CARD: black box covering the ENTIRE frame in the last 5 seconds
+    filters.append(f"{current_v}drawbox=x=0:y=0:w=1080:h=1920:color=black:t=fill"
+                   f":enable='gte(t,{end_start:.2f})'[v_endbox]")
+    
+    # 'video completo :' text centered, only visible in the end card
+    filters.append(f"[v_endbox]drawtext=fontfile='{escaped_font}':text='video completo \\:'"
+                   f":fontcolor=white:fontsize=52:x=(w-tw)/2:y=700"
+                   f":enable='gte(t,{end_start:.2f})'[v_txt]")
+    
+    # Screenshot centered below the text, only in end card
+    filters.append(f"[v_txt][img]overlay=x=(W-w)/2:y=800"
+                   f":enable='gte(t,{end_start:.2f})'[v_midt]")
+    
+    # Overlay like button at y=1500, centered, at 20s/80s/140s
+    filters.append(f"[v_midt][b1t]overlay=x=(W-w)/2:y=1500:enable='between(t,20,29)'[v1_btn]")
+    filters.append(f"[v1_btn][b2t]overlay=x=(W-w)/2:y=1500:enable='between(t,80,89)'[v2_btn]")
+    filters.append(f"[v2_btn][b3t]overlay=x=(W-w)/2:y=1500:enable='between(t,140,149)'[outv]")
+    
+    # Audio processing remains same
+    filters.append(f"[2:a]asplit=3[a1][a2][a3]")
+    filters.append(f"[a1]adelay=20000|20000[a1t]")
+    filters.append(f"[a2]adelay=80000|80000[a2t]")
+    filters.append(f"[a3]adelay=140000|140000[a3t]")
+    filters.append(f"[0:a][a1t][a2t][a3t]amix=inputs=4:duration=first:normalize=0[outa]")
+
+    filter_complex = "; ".join(filters)
+
+    cmd = ["ffmpeg", "-y"] + inputs + [
         "-filter_complex", filter_complex,
         "-map", "[outv]",
         "-map", "[outa]",
-        "-c:v", "libx264",
-        "-crf", "21",
-        "-preset", "fast",
-        "-c:a", "aac",
-        "-b:a", "128k",
+        "-c:v", "libx264", "-crf", "21", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "128k",
         str(output_path)
     ]
 
@@ -115,6 +144,7 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
         print(f"   [ERROR] FFmpeg failed:")
         print(result.stderr[-500:])
         sys.exit(1)
+
 
 
 def main():
@@ -151,6 +181,8 @@ def main():
     # Parse optional arguments
     like_btn_path = None
     output_path = None
+    header_img_path = None
+    header_text = None
 
     i = 3
     while i < len(sys.argv):
@@ -159,6 +191,12 @@ def main():
             i += 2
         elif sys.argv[i] == "--output" and i + 1 < len(sys.argv):
             output_path = Path(sys.argv[i + 1])
+            i += 2
+        elif sys.argv[i] == "--header-img" and i + 1 < len(sys.argv):
+            header_img_path = Path(sys.argv[i + 1])
+            i += 2
+        elif sys.argv[i] == "--header-text" and i + 1 < len(sys.argv):
+            header_text = sys.argv[i + 1]
             i += 2
         else:
             i += 1
@@ -177,12 +215,11 @@ def main():
     print("ENHANCE SHORT")
     print("=" * 60)
     print(f"   Clip:       {clip_path.name}")
-    print(f"   Screenshot: {screenshot_path.name}")
-    print(f"   Like Btn:   {like_btn_path.name}")
-    print(f"   Output:     {output_path.name}")
+    print(f"   Header Img: {header_img_path.name if header_img_path else 'None'}")
+    print(f"   Header Txt: {header_text}")
     print()
 
-    enhance_video(clip_path, screenshot_path, like_btn_path, output_path)
+    enhance_video(clip_path, screenshot_path, like_btn_path, output_path, header_img_path, header_text)
 
     print()
     print("=" * 60)

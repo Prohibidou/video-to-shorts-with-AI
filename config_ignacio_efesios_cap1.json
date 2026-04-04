@@ -1,0 +1,38 @@
+{
+  "url": "https://www.youtube.com/watch?v=JxAdV9YVbsY",
+  "segments": [
+    {
+      "name": "Los Apostoles Catolicos",
+      "start": "11:30",
+      "end": "14:30",
+      "hook_text": "Maria era catolica, Pablo era catolico, Juan era catolico, Ignacio, Timoteo, Onesimo y la Iglesia de Cristo se llamaba Catolica.",
+      "hook_duration": 6.0
+    },
+    {
+      "name": "El Silencio de Cristo - Reto Sarcastico",
+      "start": "21:25",
+      "end": "24:25",
+      "hook_text": "¿Por que ustedes ahora profesan ser catolicos? ¿Por que ahora sus obispos se hacen llamar catolicos? Vuelvan a la iglesia evangelica.",
+      "hook_duration": 6.0
+    },
+    {
+      "name": "La Mentira de la Reforma - Lutero",
+      "start": "13:31",
+      "end": "16:31",
+      "hook_text": "Es una mentira que Lutero cuando se rebelo contra la iglesia recupero la doctrina apostolica de la Sola Fide o la Sola Escritura.",
+      "hook_duration": 6.0
+    },
+    {
+      "name": "La Muerte de los Falsos Maestros",
+      "start": "25:48",
+      "end": "28:48",
+      "hook_text": "¿Cuanto mas digno de la muerte espiritual es el que corrompa con su mala doctrina la fe de Dios por la que Jesucristo fue crucificado?",
+      "hook_duration": 6.0
+    }
+  ],
+  "make_vertical": true,
+  "fast_mode": false,
+  "keep_source": true,
+  "preview_mode": false,
+  "resume_mode": false
+}
