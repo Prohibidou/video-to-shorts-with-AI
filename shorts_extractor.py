@@ -67,7 +67,7 @@ def get_video_title(url: str) -> str:
         if result.returncode == 0:
             return result.stdout.strip()
     except Exception as e:
-        print(f"   ⚠️ Could not get title: {e}")
+        print(f"   [WARN] Could not get title: {e}")
     return None
 
 
@@ -75,12 +75,12 @@ def download_video(url: str, output_dir: Path) -> Path:
     """Downloads the YouTube video."""
     target_file = output_dir / "source_video.mp4"
     if target_file.exists() and target_file.stat().st_size > 0:
-        print(f"\n   ✅ Video already exists: {target_file.name}")
+        print(f"\n   [OK] Video already exists: {target_file.name}")
         return target_file
 
     output_template = str(output_dir / "source_video.%(ext)s")
     
-    print(f"\n📥 Downloading video...")
+    print(f"\n[INFO] Downloading video...")
     print(f"   URL: {url}")
     
     cmd = [
@@ -95,12 +95,12 @@ def download_video(url: str, output_dir: Path) -> Path:
     result = subprocess.run(cmd, capture_output=True, text=True)
     
     if result.returncode != 0:
-        print(f"❌ Download error: {result.stderr}")
+        print(f"[ERROR] Download error: {result.stderr}")
         sys.exit(1)
     
     # Find the downloaded file
     for file in output_dir.glob("source_video.*"):
-        print(f"   ✅ Downloaded: {file.name}")
+        print(f"   [OK] Downloaded: {file.name}")
         return file
     
     raise FileNotFoundError("Downloaded video not found")
@@ -129,8 +129,8 @@ def extract_clip(
     temp_clip = output_dir / f"temp_clip_{clip_index:02d}.mp4"
     output_file = output_dir / f"clip_{clip_index:02d}_{safe_name}.mp4"
     
-    print(f"\n🎬 Extracting clip {clip_index}: {segment.name}")
-    print(f"   ⏱️  {segment.start} → {segment.end} (duration: {duration:.1f}s)")
+    print(f"\n[CLIP] Extracting clip {clip_index}: {segment.name}")
+    print(f"   [TIME] {segment.start} -> {segment.end} (duration: {duration:.1f}s)")
     
     # Step 1: Extract temporary clip (or audio if in preview mode)
     if preview_mode:
@@ -165,12 +165,12 @@ def extract_clip(
     result = subprocess.run(cmd_extract, capture_output=True, text=True)
     
     if not temp_clip.exists():
-        print(f"   ❌ Error: Could not create temporary clip")
+        print(f"   [ERROR] Error: Could not create temporary clip")
         print(f"   ℹ️ FFmpeg stderr: {result.stderr[:500]}")
         return None, "", None
         
     if temp_clip.stat().st_size == 0:
-        print(f"   ❌ Error: Temporary clip is 0 bytes (corrupted)")
+        print(f"   [ERROR] Error: Temporary clip is 0 bytes (corrupted)")
         print(f"   ℹ️ FFmpeg stderr: {result.stderr[:500]}")
         temp_clip.unlink()
         return None, "", None
@@ -180,8 +180,8 @@ def extract_clip(
     # IMPORTANT: The first hook_duration seconds are PROTECTED and never cut
     hook_protection_seconds = segment.hook_duration if segment.hook_duration else 4.0
     try:
-        print("   ✂️  Analyzing silence patterns...")
-        print(f"   🛡️  Hook protection zone: first {hook_protection_seconds:.1f}s are untouchable")
+        print("   [EDIT] Analyzing silence patterns...")
+        print(f"   [SHIELD] Hook protection zone: first {hook_protection_seconds:.1f}s are untouchable")
         silence_thresh = "-35dB"
         silence_duration = "0.5" # Minimum duration (seconds) to consider silence
         
@@ -231,7 +231,7 @@ def extract_clip(
                 filtered_ends.append(s_end)
         
         if skipped_count > 0:
-            print(f"   🛡️  Skipped {skipped_count} silence(s) inside hook protection zone")
+            print(f"   [SHIELD] Skipped {skipped_count} silence(s) inside hook protection zone")
         
         silence_starts = filtered_starts
         silence_ends = filtered_ends
@@ -276,7 +276,7 @@ def extract_clip(
             elif len(keep_segments) == 1 and keep_segments[0][0] == 0.0 and keep_segments[0][1] == total_duration:
                  print("   ℹ️  Silence detected but effectively full video. Skipping.")
             else:
-                print(f"   ✂️  Cutting {len(keep_segments)} active segments...")
+                print(f"   [EDIT] Cutting {len(keep_segments)} active segments...")
                 
                 # 3. Extract segments
                 segment_files = []
@@ -320,7 +320,7 @@ def extract_clip(
                     if processed_clip.exists() and processed_clip.stat().st_size > 0:
                         temp_clip.unlink()
                         processed_clip.rename(temp_clip)
-                        print("   ✅ Silence removed successfully (Synced Audio/Video)")
+                        print("   [OK] Silence removed successfully (Synced Audio/Video)")
                     else:
                         print("   ⚠️  Concat failed. Using original.")
                         
@@ -328,18 +328,20 @@ def extract_clip(
         print(f"   ⚠️  Error in silence removal: {e}") 
     
     if preview_mode:
-        print(f"   ⚠️ Preview mode is deprecated as transcription is removed.")
+        print(f"   [WARN] Preview mode is deprecated as transcription is removed.")
         return None, "", None
 
     
     # Step 4: Finalize video
     
     if make_vertical:
-        # Vertical 9:16 format (without subtitles)
+        # Vertical 9:16 format - crop BOTTOM-RIGHT quadrant (speaker webcam only)
+        # Source is 1920x1080. Speaker is at bottom-right: x=1152, y=540, w=768, h=540.
+        # Crop that, scale to 1080 wide, center on 1080x1920 black canvas.
         filter_complex = (
             f"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-            f"crop=1080:1920,boxblur=20:5[bg];"
-            f"[0:v]scale=1080:-2:force_original_aspect_ratio=decrease[fg];"
+            f"crop=1080:1920,drawbox=x=0:y=0:w=1080:h=1920:color=black:t=fill[bg];"
+            f"[0:v]crop=768:486:1152:594,scale=1080:-2:force_original_aspect_ratio=decrease[fg];"
             f"[bg][fg]overlay=(W-w)/2:(H-h)/2[v]"
         )
         cmd_final = [
@@ -361,7 +363,7 @@ def extract_clip(
         # But to be safe and consistent with previous behavior (re-encoding), let's keep it simple
         # Actually, if not vertical, we can just move the temp clip
         temp_clip.rename(output_file)
-        print(f"   ✅ Saved: {output_file.name}")
+        print(f"   [OK] Saved: {output_file.name}")
         return output_file, "", None
     
     # Run FFmpeg from the clip directory to avoid path issues
@@ -372,7 +374,7 @@ def extract_clip(
     
     # Check if FFmpeg failed
     if result.returncode != 0:
-        print(f"   ❌ Error: FFmpeg failed (exit code {result.returncode}).")
+        print(f"   [ERROR] Error: FFmpeg failed (exit code {result.returncode}).")
         try:
             with open(log_file, "r") as f_read:
                 print(f"   ℹ️ Log: {f_read.read()[:500]}")
@@ -389,21 +391,21 @@ def extract_clip(
     
     # ROBUST VALIDATION: Check if output file exists AND is not 0 bytes (corrupted)
     if not output_file.exists():
-        print(f"   ❌ Error: Could not create video")
+        print(f"   [ERROR] Error: Could not create video")
         return None, "", None
     
     # Check for corrupted (0-byte) file - indicates FFmpeg failure (memory error, etc.)
     if output_file.stat().st_size == 0:
-        print(f"   ❌ Error: Output file is 0 bytes (corrupted). FFmpeg may have failed due to memory.")
+        print(f"   [ERROR] Error: Output file is 0 bytes (corrupted). FFmpeg may have failed due to memory.")
         output_file.unlink()  # Delete corrupted file
         return None, "", None
     
     # Additional validation: Check if file is at least 100KB (reasonable minimum for 1min video)
     min_size = 100 * 1024  # 100KB
     if output_file.stat().st_size < min_size:
-        print(f"   ⚠️  Warning: Output file is unusually small ({output_file.stat().st_size} bytes)")
+        print(f"   [WARN] Warning: Output file is unusually small ({output_file.stat().st_size} bytes)")
     
-    print(f"   ✅ Saved: {output_file.name}")
+    print(f"   [OK] Saved: {output_file.name}")
     return output_file, "", None
 
 
@@ -426,8 +428,8 @@ def extract_clip_fast(
     safe_name = "".join(c if c.isalnum() or c in "- _" else "_" for c in segment.name)
     output_file = output_dir / f"clip_{clip_index:02d}_{safe_name}.mp4"
     
-    print(f"\n⚡ Extracting clip {clip_index} (fast mode, no subtitles): {segment.name}")
-    print(f"   ⏱️  {segment.start} → {segment.end}")
+    print(f"\n[FAST] Extracting clip {clip_index} (fast mode, no subtitles): {segment.name}")
+    print(f"   [TIME] {segment.start} → {segment.end}")
     
     cmd = [
         "ffmpeg", "-y",
@@ -441,10 +443,10 @@ def extract_clip_fast(
     result = subprocess.run(cmd, capture_output=True, text=True)
     
     if result.returncode != 0:
-        print(f"   ❌ Error: {result.stderr[:200]}")
+        print(f"   [ERROR] Error: {result.stderr[:200]}")
         return None
     
-    print(f"   ✅ Saved: {output_file.name}")
+    print(f"   [OK] Saved: {output_file.name}")
     return output_file
 
 
@@ -461,11 +463,11 @@ def process_video(
     """Processes a complete video extracting all segments."""
     
     print("=" * 60)
-    print("🎥 YOUTUBE SHORTS EXTRACTOR")
+    print("VIDEO SHORTS EXTRACTOR")
     if preview_mode:
         print("   👀 PREVIEW MODE (No video rendering)")
     if resume_mode:
-        print("   ⏯️  RESUME MODE (Skipping existing clips)")
+        print("   [RESUME] RESUME MODE (Skipping existing clips)")
     print("=" * 60)
     
     
@@ -480,7 +482,7 @@ def process_video(
     if not video_title:
         video_title = "Untitled Video"
     if video_title:
-        print(f"   📺 Title: {video_title}")
+            print(f"   [TITLE] Title: {video_title}")
     
     # Create folder for video using the title
     safe_video_title = "".join(c if c.isalnum() or c in "- _" else "_" for c in (video_title or "Video"))
@@ -492,14 +494,14 @@ def process_video(
     if DB_AVAILABLE:
         try:
             video_id = save_video(url=url, title=video_title, transcript=None)
-            print(f"   💾 Video registered in DB (ID: {video_id})")
+            print(f"   [DB] Video registered in DB (ID: {video_id})")
         except Exception as e:
-            print(f"   ⚠️ Error saving video to DB: {e}")
+            print(f"   [WARN] Error saving video to DB: {e}")
     
     # Extract each segment
-    print(f"\n📋 Processing {len(segments)} segments...")
+    print(f"\n[INFO] Processing {len(segments)} segments...")
     if preview_mode:
-        print("   👀 PREVIEW MODE (Logic deprecated, will skip extraction)")
+        print("   [INFO] PREVIEW MODE (Logic deprecated, will skip extraction)")
     
     extracted_clips = []
     all_scripts = []  # To save complete video transcription
@@ -515,7 +517,7 @@ def process_video(
         final_clip_path = short_folder / final_clip_name
         
         if resume_mode and final_clip_path.exists() and final_clip_path.stat().st_size > 100000:
-            print(f"\n✅ Clip {i} {segment.name} already exists. Skipping.")
+            print(f"\n[OK] Clip {i} {segment.name} already exists. Skipping.")
             extracted_clips.append(final_clip_path)
             continue
 
@@ -563,9 +565,9 @@ def process_video(
                         folder_path=str(short_folder),
                         hook_text=db_hook_text
                     )
-                    print(f"   💾 Short saved to DB (ID: {short_id})")
+                    print(f"   [DB] Short saved to DB (ID: {short_id})")
                 except Exception as e:
-                    print(f"   ⚠️ Error saving short to DB: {e}")
+                    print(f"   [WARN] Error saving short to DB: {e}")
     
     # Update complete video transcription in DB
     if DB_AVAILABLE and video_id and all_scripts:
@@ -573,31 +575,31 @@ def process_video(
             full_transcript = "\n\n".join(all_scripts)
             save_video(url=url, title=None, transcript=full_transcript)
         except Exception as e:
-            print(f"   ⚠️ Error updating transcript in DB: {e}")
+            print(f"   [WARN] Error updating transcript in DB: {e}")
     
     # Clean up source video if not keeping
     if not keep_source:
         source_video.unlink()
-        print(f"\n🗑️  Source video deleted")
+        print(f"\n[CLEAN] Source video deleted")
     
     # Summary
     print("\n" + "=" * 60)
-    print("✅ PROCESS COMPLETED")
+    print("PROCESS COMPLETED")
     print("=" * 60)
     print(f"   📂 Clips saved to: {video_clips_dir}")
     if preview_mode:
-         print(f"   👀 Preview completed for {len(all_scripts)} scripts.")
+         print(f"   [INFO] Preview completed for {len(all_scripts)} scripts.")
          
          # Interactive selection loop
          while True:
             print("\n" + "="*60)
-            print("👇 SELECTION MENU")
+            print("--- SELECTION MENU ---")
             print("Enter the numbers of the shorts to render (comma-separated, e.g., 1,3)")
             print("Or type 'all' to render all, or 'q' to quit.")
-            choice = input("👉 Your choice: ").strip().lower()
+            choice = input("Your choice: ").strip().lower()
             
             if choice == 'q' or choice == 'quit' or not choice:
-                print("👋 Exiting without rendering.")
+                print("Exiting without rendering.")
                 return extracted_clips
             
             selected_indices = []
@@ -622,7 +624,7 @@ def process_video(
                 
             # Filter segments based on selection
             selected_segments = [segments[i] for i in selected_indices]
-            print(f"\n🚀 Rendering {len(selected_segments)} selected shorts...")
+            print(f"\n[RUN] Rendering {len(selected_segments)} selected shorts...")
             
             # Recursive call with preview_mode=False
             return process_video(
@@ -637,7 +639,7 @@ def process_video(
 
     print(f"   📊 Clips extracted: {len(extracted_clips)}/{len(segments)}")
     if DB_AVAILABLE:
-        print(f"   💾 Data saved to database")
+        print(f"   [DB] Data saved to database")
     
     return extracted_clips
 
@@ -650,7 +652,7 @@ if __name__ == "__main__":
     
     if len(sys.argv) < 2:
         print("=" * 60)
-        print("🎥 YOUTUBE SHORTS EXTRACTOR")
+        print("VIDEO SHORTS EXTRACTOR")
         print("=" * 60)
         print()
         print("Usage: python shorts_extractor.py <config.json>")
@@ -675,7 +677,7 @@ if __name__ == "__main__":
     
     config_path = Path(sys.argv[1])
     if not config_path.exists():
-        print(f"❌ Config file not found: {config_path}")
+        print(f"[ERROR] Config file not found: {config_path}")
         sys.exit(1)
     
     with open(config_path, "r", encoding="utf-8") as f:
@@ -700,7 +702,7 @@ if __name__ == "__main__":
     PREVIEW_MODE = config.get("preview_mode", False)
     RESUME_MODE = config.get("resume_mode", False)
     
-    print(f"📄 Loaded {len(SEGMENTS)} segments from: {config_path.name}")
+    print(f"[INFO] Loaded {len(SEGMENTS)} segments from: {config_path.name}")
     
     process_video(
         url=VIDEO_URL,

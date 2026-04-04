@@ -102,6 +102,93 @@ python shorts_extractor.py
 python generate_extended.py
 ```
 
+### 6. Enhance shorts with visual overlays (OPTIONAL — requires screenshot)
+
+> [!IMPORTANT]
+> This step requires the user to provide a **screenshot/thumbnail image** for the "video completo" overlay.
+> The user can send a different screenshot for each video. Ask the user for the image path.
+
+```bash
+python enhance_short.py "<clip_path>" "<screenshot_path>"
+```
+
+**What it does:**
+- Adds "video completo :" text + screenshot thumbnail (top-right corner, blurred zone)
+- Adds animated "Like & Subscribe" button (bottom center, 3 appearances with sound)  
+- Green screen is auto-removed via chromakey
+- The Like button animation is auto-downloaded and cached
+
+**Options:**
+- `--like-btn <path>` — Use a custom Like button animation instead of the default
+- `--output <path>` — Custom output path (default: `<clip>_final.mp4`)
+
+### 7. Add movie-style subtitles (OPTIONAL)
+
+> [!IMPORTANT]
+> Uses `faster-whisper` with the `large-v3` model for maximum Spanish accuracy.
+> First run downloads the model (~3GB). Subsequent runs use the cached version.
+
+```bash
+python add_subtitles.py "<video_path>"
+```
+
+**What it does:**
+- Transcribes audio using Whisper large-v3 (high accuracy, minimal typos)
+- Generates SRT + ASS subtitle files
+- Burns movie-style subtitles (black background, yellowish text) into the video
+
+**Options:**
+- `--model NAME` — Whisper model: tiny, base, small, medium, large-v3 (default)
+- `--output PATH` — Custom output path (default: `<clip>_sub.mp4`)
+- `--srt-only` — Only generate SRT file, skip video burn-in
+
+### 8. Remove dead times / silences (POST-PRODUCTION — no re-render)
+
+> [!IMPORTANT]
+> Apply this to the **already finished video** (after subtitles and overlays).
+> It does NOT re-render the video nor the subtitles. It only cuts silent segments out.
+
+```bash
+python remove_silence.py "<final_video>"
+```
+
+**What it does:**
+- Detects silences using FFmpeg `silencedetect` (default: pauses > 0.4s at -30dB)
+- Cuts them out and concatenates the remaining segments
+- Output: `<video>_fluid.mp4`
+
+**Options:**
+- `--threshold N` — Silence threshold in dB (default: -30)
+- `--min-silence N` — Minimum silence duration in seconds to cut (default: 0.4)
+- `--output PATH` — Custom output path
+
+### 9. Trim video (POST-PRODUCTION — no re-render)
+
+> [!IMPORTANT]
+> Apply this to the **already finished video** (after subtitles and overlays).
+> It does NOT re-render the video nor the subtitles. It only trims the video to the specified range.
+
+```bash
+python trim_video.py "<final_video>" <end_time>
+```
+
+**What it does:**
+- Cuts the video to a specific time range using FFmpeg `-c copy` (instant, no re-encoding)
+- Keeps video, audio, and burned-in subtitles exactly as they are
+- Output: `<video>_trimmed.mp4`
+
+**Examples:**
+```bash
+# Keep from 00:00 to 02:23
+python trim_video.py video.mp4 02:23
+
+# Keep from 00:10 to 02:23
+python trim_video.py video.mp4 02:23 --start 00:10
+
+# Custom output
+python trim_video.py video.mp4 02:23 -o trimmed.mp4
+```
+
 ---
 
 ## Duration Rules

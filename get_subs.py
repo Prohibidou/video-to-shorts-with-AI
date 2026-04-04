@@ -3,8 +3,10 @@ import subprocess
 import json
 import glob
 
+import sys
+
 def main():
-    video_url = "https://www.youtube.com/watch?v=JxAdV9YVbsY"
+    video_url = sys.argv[1] if len(sys.argv) > 1 else "https://www.youtube.com/watch?v=JxAdV9YVbsY"
     output_dir = Path("temp_analysis_output")
     output_dir.mkdir(exist_ok=True)
     

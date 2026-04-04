@@ -107,7 +107,7 @@ def init_db():
     
     conn.commit()
     conn.close()
-    print(f"✅ Database initialized at: {DATABASE_PATH}")
+    print(f"Database initialized at: {DATABASE_PATH}")
 
 
 def save_video(url: str, title: str = None, transcript: str = None, clips_folder: str = None) -> int:
