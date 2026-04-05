@@ -18,9 +18,18 @@ import sys
 import json
 import tempfile
 import re
+import io
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Tuple
+
+# Fix Unicode output issues on Windows consoles
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stderr.reconfigure(encoding='utf-8')
+    except (AttributeError, io.UnsupportedOperation):
+        pass
 
 # Database module for tracking
 try:
@@ -237,7 +246,7 @@ def extract_clip(
         silence_ends = filtered_ends
         
         if not silence_starts:
-            print("   ℹ️  No significant silence found (outside hook zone). Skipping cut.")
+            print("   [INFO] No significant silence found (outside hook zone). Skipping cut.")
         else:
             # Construct keep segments
             # Keep: [0, start[0]], [end[0], start[1]], [end[1], end_of_video]
@@ -272,9 +281,9 @@ def extract_clip(
                 keep_segments.append((last_pos, total_duration))
             
             if len(keep_segments) < 1:
-                print("   ⚠️  All content detected as silence? Skipping cut.")
+                print("   [WARN] All content detected as silence? Skipping cut.")
             elif len(keep_segments) == 1 and keep_segments[0][0] == 0.0 and keep_segments[0][1] == total_duration:
-                 print("   ℹ️  Silence detected but effectively full video. Skipping.")
+                 print("   [INFO] Silence detected but effectively full video. Skipping.")
             else:
                 print(f"   [EDIT] Cutting {len(keep_segments)} active segments...")
                 
@@ -322,10 +331,10 @@ def extract_clip(
                         processed_clip.rename(temp_clip)
                         print("   [OK] Silence removed successfully (Synced Audio/Video)")
                     else:
-                        print("   ⚠️  Concat failed. Using original.")
+                        print("   [WARN] Concat failed. Using original.")
                         
     except Exception as e:
-        print(f"   ⚠️  Error in silence removal: {e}") 
+        print(f"   [WARN] Error in silence removal: {e}") 
     
     if preview_mode:
         print(f"   [WARN] Preview mode is deprecated as transcription is removed.")
@@ -435,8 +444,9 @@ def extract_clip_fast(
         "ffmpeg", "-y",
         "-ss", str(start_seconds),
         "-i", str(source_video),
-        "-t", str(duration),
-        "-c", "copy",  # Without re-encoding
+        "-to", str(end_seconds),
+        "-c:v", "libx264", "-preset", "fast", "-crf", "18", "-r", "30",
+        "-c:a", "aac", "-b:a", "192k",
         str(output_file)
     ]
     
@@ -612,14 +622,12 @@ def process_video(
                         idx = int(p.strip()) - 1
                         if 0 <= idx < len(segments):
                             selected_indices.append(idx)
-                        else:
-                            print(f"⚠️  Invalid index ignored: {p}")
                 except ValueError:
-                    print("❌ Invalid input format. Please try again.")
+                    print("[ERROR] Invalid input format. Please try again.")
                     continue
             
             if not selected_indices:
-                print("⚠️  No valid shorts selected.")
+                print("[WARN] No valid shorts selected.")
                 continue
                 
             # Filter segments based on selection

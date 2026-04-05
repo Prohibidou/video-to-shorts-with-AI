@@ -14,7 +14,24 @@ Example:
 
 import subprocess
 import sys
+import json
 from pathlib import Path
+
+
+def get_video_resolution(video_path: Path) -> tuple:
+    """Get video width and height using ffprobe."""
+    cmd = [
+        "ffprobe", "-v", "error", "-select_streams", "v:0",
+        "-show_entries", "stream=width,height", "-of", "json",
+        str(video_path)
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
+        data = json.loads(result.stdout)
+        width = data['streams'][0]['width']
+        height = data['streams'][0]['height']
+        return width, height
+    return 1080, 1920
 
 DEFAULT_LIKE_BTN_URL = "https://www.youtube.com/watch?v=4bDBhs6eG-o"
 
@@ -60,6 +77,10 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     end_start = max(0, dur - 5)
     print(f"   [INFO] Video duration: {dur:.1f}s, end-card from {end_start:.1f}s")
 
+    # Detect resolution
+    width, height = get_video_resolution(clip_path)
+    print(f"   [INFO] Video resolution: {width}x{height}")
+
     inputs = [
         "-i", str(clip_path),
         "-i", str(screenshot_path),
@@ -67,11 +88,13 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     ]
     
     # Filter Complex Building
-    # 1. Process screenshot - scaled to 500px wide for the end-card
-    filters = [f"[1:v]scale=500:-1[img]"]
+    # 1. Process screenshot - scaled to 25% of height or fixed width
+    img_width = int(width * 0.4) if width > height else 500
+    filters = [f"[1:v]scale={img_width}:-1[img]"]
     
-    # 2. Process like button (v) - 1000px wide, chroma-keyed
-    filters.append(f"[2:v]scale=1000:-1,chromakey=0x00FF00:0.1:0.2,split=3[b1][b2][b3]")
+    # 2. Process like button (v) - scaled to 80% of width
+    like_width = int(width * 0.8)
+    filters.append(f"[2:v]scale={like_width}:-1,chromakey=0x00FF00:0.1:0.2,split=3[b1][b2][b3]")
     filters.append(f"[b1]setpts=PTS+20/TB[b1t]")
     filters.append(f"[b2]setpts=PTS+80/TB[b2t]")
     filters.append(f"[b3]setpts=PTS+140/TB[b3t]")
@@ -79,42 +102,26 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     # Base video processing
     current_v = "[0:v]"
     
-    # HEADER (Optional) - First 50 seconds
-    if header_img_path and header_img_path.exists():
-        inputs.extend(["-i", str(header_img_path)])
-        idx = len(inputs) // 2 - 1 # Current index of header_img
-        
-        # Scale header image to 220px height
-        filters.append(f"[{idx}:v]scale=-1:220[hdr_img]")
-        
-        # Overlay header image centered at y=200
-        filters.append(f"{current_v}[hdr_img]overlay=x=(W-w)/2:y=200:enable='lt(t,50)'[v_hdr_img]")
-        current_v = "[v_hdr_img]"
-        
-        if header_text:
-            # Place text centered below the image (image y=200 + height=220 + 30 spacer = 450)
-            filters.append(f"{current_v}drawtext=fontfile='{escaped_font}':text='{header_text}':"
-                           f"fontcolor=white:fontsize=52:x=(w-tw)/2:y=450:"
-                           f"bordercolor=black:borderw=2:enable='lt(t,50)'[v_hdr_full]")
-            current_v = "[v_hdr_full]"
-
     # END CARD: black box covering the ENTIRE frame in the last 5 seconds
-    filters.append(f"{current_v}drawbox=x=0:y=0:w=1080:h=1920:color=black:t=fill"
+    filters.append(f"{current_v}drawbox=x=0:y=0:w={width}:h={height}:color=black:t=fill"
                    f":enable='gte(t,{end_start:.2f})'[v_endbox]")
     
-    # 'video completo :' text centered, only visible in the end card
+    # 'video completo :' text centered
+    txt_y = int(height * 0.3)
     filters.append(f"[v_endbox]drawtext=fontfile='{escaped_font}':text='video completo \\:'"
-                   f":fontcolor=white:fontsize=52:x=(w-tw)/2:y=700"
+                   f":fontcolor=white:fontsize=52:x=(w-tw)/2:y={txt_y}"
                    f":enable='gte(t,{end_start:.2f})'[v_txt]")
     
-    # Screenshot centered below the text, only in end card
-    filters.append(f"[v_txt][img]overlay=x=(W-w)/2:y=800"
+    # Screenshot centered below the text
+    img_y = txt_y + 100
+    filters.append(f"[v_txt][img]overlay=x=(W-w)/2:y={img_y}"
                    f":enable='gte(t,{end_start:.2f})'[v_midt]")
     
-    # Overlay like button at y=1500, centered, at 20s/80s/140s
-    filters.append(f"[v_midt][b1t]overlay=x=(W-w)/2:y=1500:enable='between(t,20,29)'[v1_btn]")
-    filters.append(f"[v1_btn][b2t]overlay=x=(W-w)/2:y=1500:enable='between(t,80,89)'[v2_btn]")
-    filters.append(f"[v2_btn][b3t]overlay=x=(W-w)/2:y=1500:enable='between(t,140,149)'[outv]")
+    # Overlay like button at bottom center
+    btn_y = int(height * 0.7)
+    filters.append(f"[v_midt][b1t]overlay=x=(W-w)/2:y={btn_y}:enable='between(t,20,29)'[v1_btn]")
+    filters.append(f"[v1_btn][b2t]overlay=x=(W-w)/2:y={btn_y}:enable='between(t,80,89)'[v2_btn]")
+    filters.append(f"[v2_btn][b3t]overlay=x=(W-w)/2:y={btn_y}:enable='between(t,140,149)'[outv]")
     
     # Audio processing remains same
     filters.append(f"[2:a]asplit=3[a1][a2][a3]")
@@ -129,7 +136,7 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
         "-filter_complex", filter_complex,
         "-map", "[outv]",
         "-map", "[outa]",
-        "-c:v", "libx264", "-crf", "21", "-preset", "fast",
+        "-c:v", "libx264", "-crf", "21", "-preset", "fast", "-g", "30",
         "-c:a", "aac", "-b:a", "128k",
         str(output_path)
     ]

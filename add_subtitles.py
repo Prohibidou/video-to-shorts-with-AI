@@ -16,7 +16,24 @@ Example:
 import subprocess
 import sys
 import os
+import json
 from pathlib import Path
+
+
+def get_video_resolution(video_path: Path) -> tuple:
+    """Get video width and height using ffprobe."""
+    cmd = [
+        "ffprobe", "-v", "error", "-select_streams", "v:0",
+        "-show_entries", "stream=width,height", "-of", "json",
+        str(video_path)
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
+        data = json.loads(result.stdout)
+        width = data['streams'][0]['width']
+        height = data['streams'][0]['height']
+        return width, height
+    return 1080, 1920  # Default fallback
 
 
 def transcribe_audio(video_path: Path, model_name: str = "large-v3") -> list:
@@ -101,25 +118,24 @@ def generate_srt(segments: list, output_path: Path):
     print(f"   [OK] SRT saved: {output_path.name}")
 
 
-def generate_ass(segments: list, output_path: Path):
-    """Generate ASS subtitle file with movie-style formatting."""
-    # Movie subtitle style: yellow text on black semi-transparent box
-    # Colors in ASS format: &HAABBGGRR (hex, reversed)
-    # Yellow-ish: &H00AAFFFF (slightly warm yellow)
-    # Black box: &H80000000 (semi-transparent black)
+def generate_ass(segments: list, output_path: Path, width: int, height: int):
+    """Generate ASS subtitle file with movie-style formatting adjusted for resolution."""
+    # Scale font and margins based on height
+    font_size = int(height * 0.05) if height > width else int(height * 0.07)
+    margin_v = int(height * 0.1) # 10% from bottom
 
-    ass_header = """[Script Info]
+    ass_header = f"""[Script Info]
 Title: Movie Subtitles
 ScriptType: v4.00+
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 YCbCr Matrix: TV.709
-PlayResX: 1080
-PlayResY: 1920
+PlayResX: {width}
+PlayResY: {height}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: MovieSub,Arial,52,&H0080FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,3,2,0,2,40,40,420,1
+Style: MovieSub,Arial,{font_size},&H0080FFFF,&H000000FF,&H00000000,&H80000000,-1,0,0,0,100,100,0,0,3,2,0,2,40,40,{margin_v},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -239,8 +255,10 @@ def main():
         sys.exit(1)
 
     # Step 2: Generate subtitle files
+    width, height = get_video_resolution(video_path)
+    print(f"   [INFO] Video resolution: {width}x{height}")
     generate_srt(segments, srt_path)
-    generate_ass(segments, ass_path)
+    generate_ass(segments, ass_path, width, height)
 
     if srt_only:
         print("\n[INFO] SRT-only mode. Skipping video burn-in.")

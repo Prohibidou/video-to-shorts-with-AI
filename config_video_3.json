@@ -1,0 +1,16 @@
+{
+  "url": "https://www.youtube.com/live/CiSKrr_rzdg",
+  "segments": [
+    {
+      "name": "Se salvaron Platon Socrates y Aristoteles",
+      "start": "55:37",
+      "end": "66:24",
+      "hook_text": "Muchos Padres de la Iglesia como San Agustín, San Justino Mártir decían que los antiguos fílósofos monoteístas eran cristianos sin cristianismo o cristianos sin Cristo.",
+      "hook_duration": 4.0
+    }
+  ],
+  "make_vertical": false,
+  "fast_mode": true,
+  "keep_source": true,
+  "output_dir": "c:\\Users\\veram\\OneDrive\\Documentos\\long to short\\output"
+}

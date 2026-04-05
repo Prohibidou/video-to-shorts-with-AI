@@ -1,0 +1,16 @@
+{
+  "url": "https://www.youtube.com/live/CiSKrr_rzdg",
+  "segments": [
+    {
+      "name": "La Virgen Maria y la resurreccion anticipada",
+      "start": "90:17",
+      "end": "93:17",
+      "hook_text": "Cuando entendemos esto uno todavía se da cuenta de cuánto más gloriosa ha sido la resurrección de la Virgen María",
+      "hook_duration": 4.0
+    }
+  ],
+  "make_vertical": true,
+  "fast_mode": false,
+  "keep_source": true,
+  "output_dir": "c:\\Users\\veram\\OneDrive\\Documentos\\long to short\\output"
+}

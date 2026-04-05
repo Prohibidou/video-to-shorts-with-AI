@@ -1,0 +1,16 @@
+{
+  "url": "https://www.youtube.com/live/CiSKrr_rzdg",
+  "segments": [
+    {
+      "name": "Biblia vs Tradicion en el descenso",
+      "start": "39:11",
+      "end": "43:17",
+      "hook_text": "El protestante toma que Cristo descendió a los infiernos sólo del nuevo testamento pero no sabe que los católicos lo creemos porque los sacamos del antiguo testamento",
+      "hook_duration": 4.0
+    }
+  ],
+  "make_vertical": true,
+  "fast_mode": false,
+  "keep_source": true,
+  "output_dir": "c:\\Users\\veram\\OneDrive\\Documentos\\long to short\\output"
+}
