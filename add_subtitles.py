@@ -56,7 +56,7 @@ def transcribe_audio(video_path: Path, model_name: str = "large-v3") -> list:
     )
 
     segments = []
-    MAX_WORDS = 6
+    MAX_WORDS = 3
 
     for seg in segments_gen:
         if not seg.words:
