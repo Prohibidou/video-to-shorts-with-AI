@@ -15,7 +15,33 @@ Example:
 import subprocess
 import sys
 import json
+import time
 from pathlib import Path
+
+# =====================================================================
+# FIX: Force UTF-8 output on Windows to prevent UnicodeEncodeError
+# =====================================================================
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
+
+def safe_delete(path: Path, retries=3, wait=2):
+    """Delete a file safely, retrying if it's locked by another process."""
+    for attempt in range(retries):
+        try:
+            if path.exists():
+                path.unlink()
+            return True
+        except PermissionError:
+            if attempt < retries - 1:
+                print(f"   [WARN] '{path.name}' is locked. Retrying in {wait}s... ({attempt+1}/{retries})")
+                time.sleep(wait)
+            else:
+                print(f"   [ERROR] Cannot overwrite '{path.name}'. Close it and retry.")
+                return False
+    return True
 
 
 def get_video_resolution(video_path: Path) -> tuple:
@@ -89,7 +115,7 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     
     # Filter Complex Building
     # 1. Process screenshot - scaled to 25% of height or fixed width
-    img_width = int(width * 0.4) if width > height else 500
+    img_width = int(width * 0.8)
     filters = [f"[1:v]scale={img_width}:-1[img]"]
     
     # 2. Process like button (v) - scaled to 80% of width
@@ -106,19 +132,19 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     filters.append(f"{current_v}drawbox=x=0:y=0:w={width}:h={height}:color=black:t=fill"
                    f":enable='gte(t,{end_start:.2f})'[v_endbox]")
     
-    # 'video completo :' text centered
-    txt_y = int(height * 0.3)
+    # 'video completo :' text centered above image
+    txt_y = int(height * 0.28)
     filters.append(f"[v_endbox]drawtext=fontfile='{escaped_font}':text='video completo \\:'"
                    f":fontcolor=white:fontsize=52:x=(w-tw)/2:y={txt_y}"
                    f":enable='gte(t,{end_start:.2f})'[v_txt]")
     
-    # Screenshot centered below the text
-    img_y = txt_y + 100
-    filters.append(f"[v_txt][img]overlay=x=(W-w)/2:y={img_y}"
+    # Screenshot centered in the middle of the screen
+    img_y_str = f"(H-h)/2"
+    filters.append(f"[v_txt][img]overlay=x=(W-w)/2:y={img_y_str}"
                    f":enable='gte(t,{end_start:.2f})'[v_midt]")
     
     # Overlay like button at bottom center
-    btn_y = int(height * 0.7)
+    btn_y = int(height * 0.80)
     filters.append(f"[v_midt][b1t]overlay=x=(W-w)/2:y={btn_y}:enable='between(t,20,29)'[v1_btn]")
     filters.append(f"[v1_btn][b2t]overlay=x=(W-w)/2:y={btn_y}:enable='between(t,80,89)'[v2_btn]")
     filters.append(f"[v2_btn][b3t]overlay=x=(W-w)/2:y={btn_y}:enable='between(t,140,149)'[outv]")
@@ -142,6 +168,9 @@ def enhance_video(clip_path: Path, screenshot_path: Path, like_btn_path: Path, o
     ]
 
     print(f"   [INFO] Rendering enhanced video...")
+    if not safe_delete(output_path):
+        output_path = output_path.with_stem(output_path.stem + "_new")
+        print(f"   [FALLBACK] Writing to: {output_path.name}")
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode == 0:

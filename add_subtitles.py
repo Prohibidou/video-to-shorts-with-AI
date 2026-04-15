@@ -19,6 +19,14 @@ import os
 import json
 from pathlib import Path
 
+# =====================================================================
+# FIX: Force UTF-8 output on Windows to prevent UnicodeEncodeError
+# =====================================================================
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if sys.stderr.encoding != 'utf-8':
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 
 def get_video_resolution(video_path: Path) -> tuple:
     """Get video width and height using ffprobe."""
@@ -122,7 +130,7 @@ def generate_ass(segments: list, output_path: Path, width: int, height: int):
     """Generate ASS subtitle file with movie-style formatting adjusted for resolution."""
     # Scale font and margins based on height
     font_size = int(height * 0.05) if height > width else int(height * 0.07)
-    margin_v = int(height * 0.1) # 10% from bottom
+    margin_v = int(height * 0.26) # 26% from bottom - places it right below webcam
 
     ass_header = f"""[Script Info]
 Title: Movie Subtitles
